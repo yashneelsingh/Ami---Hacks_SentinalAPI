@@ -8,12 +8,38 @@ const specFile = document.getElementById("spec-file");
 const baseUrlInput = document.getElementById("base-url-input");
 let lastResult = null;
 
+const ICON_MARKUP = {
+  "badge-check": '<path d="m9 12 2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle>',
+  check: '<path d="m5 12 4 4L19 6"></path>',
+  "circle-check": '<path d="m8 12 2.5 2.5L16 9"></path><circle cx="12" cy="12" r="9"></circle>',
+  copy: '<rect x="8" y="8" width="11" height="11" rx="1"></rect><path d="M16 8V5H5v11h3"></path>',
+  download: '<path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path>',
+  "external-link": '<path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M18 13v6H5V6h6"></path>',
+  "file-up": '<path d="M14 2H6v20h12V6Z"></path><path d="M14 2v4h4"></path><path d="M12 17V10"></path><path d="m9 13 3-3 3 3"></path>',
+  link: '<path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path>',
+  "scan-search": '<path d="M4 7V4h3"></path><path d="M17 4h3v3"></path><path d="M20 17v3h-3"></path><path d="M7 20H4v-3"></path><circle cx="11" cy="11" r="4"></circle><path d="m14 14 4 4"></path>',
+};
+
 function renderIcons(root = document) {
-  if (!window.lucide) return;
-  window.lucide.createIcons({
-    root,
-    attrs: { "stroke-width": 1.7 },
-  });
+  const nodes = [];
+  if (root.matches?.("[data-lucide]")) nodes.push(root);
+  nodes.push(...root.querySelectorAll("[data-lucide]"));
+  for (const node of nodes) {
+    const name = node.dataset.lucide;
+    const markup = ICON_MARKUP[name];
+    if (!markup) continue;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.7");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.className.baseVal = node.className;
+    svg.innerHTML = markup;
+    node.replaceWith(svg);
+  }
 }
 
 baseUrlInput.value = location.origin;
@@ -36,12 +62,14 @@ function icon(name, className = "") {
   return node;
 }
 
-function download(name, content, type) {
+function downloadReport(format) {
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([content], { type }));
-  link.download = name;
+  link.href = `/api/reports/sentinel_report.${format}`;
+  link.download = `sentinel_report.${format}`;
+  link.hidden = true;
+  document.body.append(link);
   link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  link.remove();
 }
 
 function buildCommand(finding) {
@@ -179,11 +207,11 @@ runButton.addEventListener("click", async () => {
 });
 
 jsonButton.addEventListener("click", () => {
-  if (lastResult) download("sentinel_report.json", JSON.stringify(lastResult.report, null, 2), "application/json");
+  if (lastResult) downloadReport("json");
 });
 
 mdButton.addEventListener("click", () => {
-  if (lastResult) download("sentinel_report.md", lastResult.markdown, "text/markdown");
+  if (lastResult) downloadReport("md");
 });
 
 renderIcons();

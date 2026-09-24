@@ -12,9 +12,23 @@ python -m app.seed
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/` for the V0 scanner UI. Enter the local API base URL, optionally choose its OpenAPI 3.x YAML or JSON file, then click **Run authorized scan**. The default uses the checked-in OpenAPI document and current local server. The scanner logs in as both seeded users, discovers their order IDs from `GET /orders`, and tests User A's access to User B's order. Only `http://localhost`, `http://127.0.0.1`, and `http://[::1]` origins are accepted.
+Open `http://127.0.0.1:8000/` for the local scanner UI. Enter the local API base URL, optionally choose its OpenAPI 3.x YAML or JSON file, then click **Run authorized scan**. The default uses the checked-in OpenAPI document and current local server. The scanner logs in as both seeded users, discovers their order IDs from `GET /orders`, and tests User A's access to User B's order. Only `http://localhost`, `http://127.0.0.1`, and `http://[::1]` origins are accepted.
+
+The dashboard uses only checked-in HTML, CSS, and JavaScript. It does not load fonts, icons, trackers, or images from third-party services. After a completed scan, JSON and Markdown download buttons fetch the latest server-generated report with caching disabled.
 
 The live API definition is at `http://127.0.0.1:8000/openapi.json`; the checked-in copy is [`openapi.yaml`](openapi.yaml). Swagger UI is at `http://127.0.0.1:8000/docs`.
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system flow and safety boundaries. Record participant-owned work in [`TEAM_CONTRIBUTIONS.md`](TEAM_CONTRIBUTIONS.md) and complete [`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md) before submission.
+
+## Live secure negative control
+
+Run the secure control target in a second terminal to demonstrate that the same scanner does not report BOLA when ownership checks are present:
+
+```powershell
+uvicorn app.secure_main:app --host 127.0.0.1 --port 8011
+```
+
+In the scanner UI, choose [`openapi-secure.yaml`](openapi-secure.yaml), set the local API base URL to `http://127.0.0.1:8011`, and run the scan. The secure target returns HTTP 403 when User A requests order `1002`, excludes `internal_notes` and `payment_reference` from owner responses, and should produce a completed clean report with zero confirmed findings.
 
 ## Test identities
 
@@ -33,6 +47,8 @@ Tokens returned by login are deterministic demo tokens. They are not authenticat
 - `PATCH /orders/{order_id}`
 - `GET /profile`
 - `GET /health`
+
+The separate secure control target intentionally implements only the read-only endpoints needed for the negative-control scan.
 
 ## Supported OpenAPI shape
 

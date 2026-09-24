@@ -1,7 +1,7 @@
 # SentinelAPI Scan Report
 
 **Target:** SentinelAPI Vulnerable Demo
-**Generated:** 2026-09-24T12:47:26.587230+00:00
+**Generated:** 2026-09-24T14:24:07.533145+00:00
 **Scan status:** Completed
 **Result:** Findings
 
@@ -10,6 +10,12 @@
 | Critical | High | Medium | Low | Pass |
 | --- | --- | --- | --- | --- |
 | 1 | 1 | 0 | 0 | 0 |
+
+## Endpoint outcomes
+
+| Pass | Fail | Inconclusive | Error |
+| --- | --- | --- | --- |
+| 0 | 1 | 0 | 0 |
 
 ## Findings
 
@@ -25,7 +31,7 @@
 **Safe reproduction command**
 
 ```bash
-curl -X GET "http://localhost:8000/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
+curl -X GET "http://127.0.0.1:8010/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
 ```
 
 ### 2. [High] Excessive Data Exposure
@@ -40,5 +46,5 @@ curl -X GET "http://localhost:8000/orders/1002" -H "Authorization: Bearer <TEST_
 **Safe reproduction command**
 
 ```bash
-curl -X GET "http://localhost:8000/orders/1001" -H "Authorization: Bearer <TEST_USER_TOKEN>"
+curl -X GET "http://127.0.0.1:8010/orders/1001" -H "Authorization: Bearer <TEST_USER_TOKEN>"
 ```

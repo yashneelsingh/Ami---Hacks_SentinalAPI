@@ -15,11 +15,13 @@
 | Secondary vulnerability check | Ready | Detects excessive exposure of `internal_notes` and `payment_reference`. |
 | Severity and evidence | Ready | Findings include severity, score, endpoint, expected result, observed result, evidence, and remediation. |
 | Reproduction requests | Ready | Generates curl commands with bearer tokens redacted. |
-| Dashboard and reports | Ready | Chrome dashboard and JSON and Markdown reports work end to end. |
-| Automated tests | Ready with gap | Existing suite passes 11 of 11 tests; negative controls are still required. |
+| Dashboard and reports | Ready | The local dashboard shows vulnerable and clean states and downloads server-generated JSON and Markdown reports. |
+| Automated tests | Ready | The CI-equivalent suite passes 39 tests, including vulnerable and secure controls. |
 | Safe target scope | Ready | Scanner rejects non-loopback targets and uses bounded read-only requests. |
-| Database reset | Needs work | Reset can fail on Windows while the running server holds the SQLite file. |
-| Dependency compatibility | Needs work | Test execution reports a Starlette and `httpx` deprecation warning. |
+| Database reset | Ready | Reset reseeds in one transaction and works while an existing Windows file handle is open. |
+| Dependency compatibility | Ready | The complete suite passes without the previous Starlette and `httpx` deprecation warning. |
+| Secure negative control | Ready | `app.secure_main` returns HTTP 403 for cross-user access and allowlists owner responses. |
+| Submission documentation | In progress | Architecture and contribution templates exist; team names, provenance approval, repository link, and presentation deck still require participant input. |
 
 ## Required technical work
 
@@ -59,14 +61,14 @@
 
 ### P0 Browser and report verification
 
-- [ ] Run the complete scan in Chrome after a fresh reset.
-- [ ] Verify the scan state transitions from ready to running to complete.
-- [ ] Verify the expected totals: one Critical, one High, zero Medium, and zero Low.
-- [ ] Expand both findings and verify expected, observed, remediation, and reproduction content.
-- [ ] Verify JSON and Markdown downloads.
-- [ ] Reopen both reports and confirm valid formatting, accurate evidence, and redacted tokens.
-- [ ] Verify the empty-findings state using the secure negative-control target or transport.
-- [ ] Check the dashboard at desktop and mobile widths for clipped, overlapping, or inaccessible controls.
+- [x] Run the complete vulnerable scan in a browser after a fresh reset.
+- [x] Verify ready and complete states live; automated checks cover the running and failed state labels.
+- [x] Verify the expected totals: one Critical, one High, zero Medium, and zero Low.
+- [x] Expand both findings and verify expected, observed, remediation, and reproduction content.
+- [x] Verify server-backed JSON and Markdown downloads.
+- [x] Reopen both generated reports and confirm valid formatting, accurate evidence, and redacted tokens.
+- [x] Verify the empty-findings state against the live secure control target.
+- [x] Check the dashboard at desktop and 375-pixel mobile width with no horizontal overflow or inaccessible controls.
 
 ### P1 Maintainability after P0
 
@@ -92,18 +94,17 @@ The MVP is technically ready only when all of the following pass:
 9. Invalid specifications and network failures return controlled, understandable errors.
 10. No credential or token appears in generated output.
 11. JSON and Markdown reports are valid and contain reproducible redacted requests.
-12. The Chrome workflow completes from reset through report download without manual data repair.
+12. The browser workflow completes from reset through report download without manual data repair.
 13. No request is sent to a non-loopback target.
 
-## Codex implementation order
+## Remaining submission work
 
-1. Add the secure, mismatched-response, inconclusive, and clean-result test cases.
-2. Fix the Windows database reset workflow and add reset repeatability tests.
-3. Harden scanner error handling, bounds, and secret redaction.
-4. Resolve the dependency warning and rerun the complete suite.
-5. Verify the vulnerable and secure flows in Chrome, including report downloads.
-6. Add report schema versioning and explicit outcome states.
-7. Run a final technical review of the Git diff and repository exclusions.
+1. Obtain organizer confirmation about eligibility of the pre-existing repository and record the approved provenance.
+2. Complete `TEAM_CONTRIBUTIONS.md` with registered participant names and event-period commits.
+3. Create the required 8-10 slide PPT or PDF deck using current architecture and demo evidence.
+4. Add the final repository link and deployment status to the submission.
+5. Rehearse the vulnerable and secure-control flows using `SUBMISSION_CHECKLIST.md`.
+6. Verify the organizers' final deadline, portal, and mandatory checkpoints.
 
 ## Deferred technical features
 

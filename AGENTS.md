@@ -137,7 +137,7 @@ The vulnerable flow should produce exactly one Critical BOLA finding and one Hig
 
 Preserve the existing component boundaries unless a task requires a justified change:
 
-- `app/`: FastAPI sandbox, database lifecycle, seeded users and orders, scan route, and static dashboard.
+- `app/`: vulnerable FastAPI sandbox, secure control target, database lifecycle, seeded users and orders, scan route, report downloads, and static dashboard.
 - `scanner/openapi_parser.py`: bounded OpenAPI parsing and endpoint discovery.
 - `scanner/authentication.py`: test-user authentication.
 - `scanner/request_execution.py`: bounded HTTP execution.
@@ -220,6 +220,12 @@ uvicorn app.main:app --reload
 ```
 
 Open `http://127.0.0.1:8000/` for the scanner UI and `http://127.0.0.1:8000/docs` for Swagger UI.
+
+For the live secure negative control, start a second local process and scan it with `openapi-secure.yaml`:
+
+```powershell
+uvicorn app.secure_main:app --host 127.0.0.1 --port 8011
+```
 
 Useful verification commands:
 

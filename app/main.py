@@ -101,6 +101,28 @@ def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
     return {"report": report, "markdown": markdown_report(report)}
 
 
+def _report_download(filename: str, media_type: str) -> FileResponse:
+    report_path = ROOT / "reports" / filename
+    if not report_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run a scan before downloading reports")
+    return FileResponse(
+        report_path,
+        media_type=media_type,
+        filename=filename,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/api/reports/sentinel_report.json", include_in_schema=False)
+def download_json_report() -> FileResponse:
+    return _report_download("sentinel_report.json", "application/json")
+
+
+@app.get("/api/reports/sentinel_report.md", include_in_schema=False)
+def download_markdown_report() -> FileResponse:
+    return _report_download("sentinel_report.md", "text/markdown; charset=utf-8")
+
+
 @app.get("/health", tags=["system"])
 def health() -> dict[str, str]:
     return {"status": "ok", "environment": "local-demo-only"}
