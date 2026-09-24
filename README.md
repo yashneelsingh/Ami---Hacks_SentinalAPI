@@ -2,6 +2,8 @@
 
 This is an **intentionally vulnerable, local-only** order-management API for authorized SentinelAPI scanner demonstrations. Do not deploy it, expose it publicly, or connect it to real user data.
 
+Repository: <https://github.com/yashneelsingh/Ami---Hacks_SentinalAPI>
+
 ## Setup
 
 ```powershell
@@ -18,7 +20,19 @@ The dashboard uses only checked-in HTML, CSS, and JavaScript. It does not load f
 
 The live API definition is at `http://127.0.0.1:8000/openapi.json`; the checked-in copy is [`openapi.yaml`](openapi.yaml). Swagger UI is at `http://127.0.0.1:8000/docs`.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system flow and safety boundaries. Record participant-owned work in [`TEAM_CONTRIBUTIONS.md`](TEAM_CONTRIBUTIONS.md) and complete [`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md) before submission.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system flow and safety boundaries.
+The optional hosted persistence foundation has a separate operational runbook in
+[`HOSTED_DATABASE.md`](HOSTED_DATABASE.md). Record participant-owned work in
+[`TEAM_CONTRIBUTIONS.md`](TEAM_CONTRIBUTIONS.md) and complete
+[`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md) before submission.
+The event-period Git boundary and assistance disclosure are recorded in
+[`PROVENANCE.md`](PROVENANCE.md).
+
+Submission-ready repository artifacts are indexed in
+[`submission/README.md`](submission/README.md), including the validated 9-slide
+PowerPoint deck and current desktop/mobile demo screenshots. A public deployment
+link is **not applicable** to this MVP: the vulnerable target and scanner are
+deliberately restricted to local loopback hosts and must not be publicly hosted.
 
 ## Live secure negative control
 
@@ -44,7 +58,6 @@ Tokens returned by login are deterministic demo tokens. They are not authenticat
 - `POST /auth/login`
 - `GET /orders`
 - `GET /orders/{order_id}`
-- `PATCH /orders/{order_id}`
 - `GET /profile`
 - `GET /health`
 
@@ -96,12 +109,17 @@ User B's ID returns HTTP 200 with the same JSON object returned to User B.
 - Accepts UI-uploaded specifications up to 250,000 bytes, scans at most three
   discovered endpoints, limits each response to 1,000,000 bytes, uses a
   five-second request timeout, and blocks redirects.
-- OpenAPI 2.x/Swagger documents, external targets, rate-limit testing, scan
-  history, and production or multi-tenant use are outside this local MVP.
+- OpenAPI 2.x/Swagger documents, external targets, and rate-limit testing are
+  outside this local scanner MVP. A separate hosted persistence foundation now
+  supports multi-tenant scan history and jobs without expanding target access.
 
 ## Seeded vulnerabilities
 
-`GET /orders/{order_id}` and `PATCH /orders/{order_id}` authenticate a request but **deliberately do not verify order ownership**. A request using User A's token for `/orders/1002` returns HTTP 200 with User B's order. A secure API should return HTTP 403 or HTTP 404 instead.
+`GET /orders/{order_id}` authenticates a request but **deliberately does not
+verify order ownership**. A request using User A's token for `/orders/1002`
+returns HTTP 200 with User B's order. A secure API should return HTTP 403 or
+HTTP 404 instead. The unused vulnerable `PATCH` route was removed so the demo
+target exposes only the read-only behavior needed by the scanner.
 
 The order detail endpoints also deliberately expose `internal_notes` and `payment_reference`, providing a secondary excessive-data-exposure finding. `GET /profile` exposes the otherwise internal `role` field as a smaller additional example.
 
@@ -117,7 +135,7 @@ The response is User B's order (`owner_id: 2`) despite User A's authenticated to
 
 ## Reset and test
 
-Reset seeded data after tests or a `PATCH` request. The reset is local-only and
+Reset seeded data before tests or a demo rehearsal. The reset is local-only and
 rewrites the fixed `data/sentinel_demo.db` database in one transaction; it does
 not delete or replace the database file, so it is safe to run on Windows while
 the local server process has the file open:

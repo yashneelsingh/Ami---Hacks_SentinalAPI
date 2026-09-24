@@ -1,4 +1,4 @@
-from app.database import DATABASE_PATH, database_session, reset_database
+from app.database import DATABASE_PATH, DEMO_SEED_VERSION, database_session, reset_database
 
 
 if __name__ == "__main__":
@@ -11,4 +11,5 @@ if __name__ == "__main__":
 
     order_summary = ", ".join(f"{order_id} (user {owner_id})" for order_id, owner_id in seeded_order_owners)
     print(f"Reset local SentinelAPI demo database at {DATABASE_PATH}.")
+    print(f"Fixture version: {DEMO_SEED_VERSION}.")
     print(f"Verified seeded orders: {order_summary}.")

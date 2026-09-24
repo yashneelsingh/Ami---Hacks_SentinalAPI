@@ -55,6 +55,26 @@ class DatabaseResetTests(unittest.TestCase):
 
         self.assertTrue(self.database_path.is_file())
         self.assertEqual(self.snapshot(), (EXPECTED_USERS, EXPECTED_ORDERS))
+        with database.database_session() as connection:
+            metadata = dict(connection.execute("SELECT key, value FROM demo_metadata").fetchall())
+        self.assertEqual(metadata["schema_version"], database.DEMO_SCHEMA_VERSION)
+        self.assertEqual(metadata["seed_version"], database.DEMO_SEED_VERSION)
+
+    def test_startup_rejects_malformed_or_corrupt_database_with_reset_guidance(self):
+        self.database_path.parent.mkdir(parents=True)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
+            connection.commit()
+        finally:
+            connection.close()
+        with self.assertRaisesRegex(database.DemoDatabaseError, "run python -m app.seed"):
+            database.ensure_database()
+
+        self.database_path.unlink()
+        self.database_path.write_bytes(b"not a sqlite database")
+        with self.assertRaisesRegex(database.DemoDatabaseError, "corrupt or unreadable"):
+            database.ensure_database()
 
     def test_reset_reseeds_modified_database_and_is_repeatable(self):
         database.reset_database()
@@ -88,6 +108,47 @@ class DatabaseResetTests(unittest.TestCase):
             self.assertEqual(order_ids, [(1001,), (1002,)])
         finally:
             existing_handle.close()
+
+    def test_foreign_key_rejects_order_with_unknown_owner(self):
+        database.reset_database()
+        seeded_state = self.snapshot()
+
+        with self.assertRaises(sqlite3.IntegrityError):
+            with database.database_session() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO orders
+                        (id, owner_id, item_name, amount, shipping_address,
+                         internal_notes, payment_reference)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (9999, 999, "Invalid order", 1.0, "Nowhere", "None", "pay_invalid"),
+                )
+
+        self.assertEqual(self.snapshot(), seeded_state)
+
+    def test_failed_transaction_rolls_back_all_changes(self):
+        database.reset_database()
+        seeded_state = self.snapshot()
+
+        with self.assertRaisesRegex(RuntimeError, "force rollback"):
+            with database.database_session() as connection:
+                connection.execute(
+                    "INSERT INTO users (id, email, password, role) VALUES (?, ?, ?, ?)",
+                    (3, "rollback@example.test", "temporary-password", "customer"),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO orders
+                        (id, owner_id, item_name, amount, shipping_address,
+                         internal_notes, payment_reference)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (1003, 3, "Temporary order", 5.0, "Temporary", "Temporary", "pay_temporary"),
+                )
+                raise RuntimeError("force rollback")
+
+        self.assertEqual(self.snapshot(), seeded_state)
 
     def test_repeated_scans_have_same_findings_and_do_not_mutate_database(self):
         database.reset_database()

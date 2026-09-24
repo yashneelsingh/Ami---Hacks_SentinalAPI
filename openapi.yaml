@@ -42,23 +42,6 @@ paths:
         '200': { description: Order details (intentionally BOLA-vulnerable) }
         '401': { description: Missing or invalid token }
         '404': { description: Order missing }
-    patch:
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - name: order_id
-          in: path
-          required: true
-          schema: { type: integer }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                shipping_address: { type: string }
-      responses:
-        '200': { description: Updated order (intentionally BOLA-vulnerable) }
   /profile:
     get:
       security: [{ bearerAuth: [] }]

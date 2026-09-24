@@ -6,8 +6,15 @@ env/
 *.db
 *.sqlite
 *.sqlite3
+*.dump
+backups/
+.env
+.env.*
+!.env.example
 
 .codex-review/
+.codex-build/
+.codex-finalizer/
 
 .pytest_cache/
 .coverage

@@ -11,7 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app.database import database_session, ensure_database
+from app.database import DEMO_SEED_VERSION, database_session, ensure_database
 from scanner.core import Credentials, ScanError, scan
 from scanner.openapi_parser import MAX_SPEC_BYTES
 from scanner.report_generator import markdown_report, write_reports
@@ -34,10 +34,6 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
-
-class OrderUpdate(BaseModel):
-    shipping_address: str | None = Field(default=None, min_length=3, max_length=200)
 
 
 class ScanRequest(BaseModel):
@@ -96,6 +92,7 @@ def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
     except (ValueError, httpx.HTTPError) as exc:
         log_event(logger, "scan_request_failed", level=40, error_type=type(exc).__name__)
         raise HTTPException(status_code=502, detail=str(exc)) from None
+    report["fixture_version"] = DEMO_SEED_VERSION
     write_reports(report, ROOT / "reports")
     log_event(logger, "scan_report_written", formats=["json", "markdown"])
     return {"report": report, "markdown": markdown_report(report)}
@@ -160,25 +157,6 @@ def get_order(order_id: int, _: Annotated[dict, Depends(get_current_user)]) -> d
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
     # Intentionally returns another user's order plus sensitive fields for the demo.
-    return dict(row)
-
-
-@app.patch("/orders/{order_id}", tags=["orders"])
-def update_order(
-    order_id: int,
-    update: OrderUpdate,
-    _: Annotated[dict, Depends(get_current_user)],
-) -> dict:
-    """INTENTIONAL BOLA/IDOR FLAW: an authenticated user can update any order."""
-    if update.shipping_address is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No supported fields provided")
-
-    with database_session() as connection:
-        existing = connection.execute("SELECT id FROM orders WHERE id = ?", (order_id,)).fetchone()
-        if not existing:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-        connection.execute("UPDATE orders SET shipping_address = ? WHERE id = ?", (update.shipping_address, order_id))
-        row = connection.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
     return dict(row)
 
 

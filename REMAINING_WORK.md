@@ -16,12 +16,12 @@
 | Severity and evidence | Ready | Findings include severity, score, endpoint, expected result, observed result, evidence, and remediation. |
 | Reproduction requests | Ready | Generates curl commands with bearer tokens redacted. |
 | Dashboard and reports | Ready | The local dashboard shows vulnerable and clean states and downloads server-generated JSON and Markdown reports. |
-| Automated tests | Ready | The CI-equivalent suite passes 39 tests, including vulnerable and secure controls. |
+| Automated tests | Ready | The CI-equivalent suite passes 49 tests, including vulnerable and secure controls plus hosted-database isolation and lifecycle coverage. |
 | Safe target scope | Ready | Scanner rejects non-loopback targets and uses bounded read-only requests. |
 | Database reset | Ready | Reset reseeds in one transaction and works while an existing Windows file handle is open. |
 | Dependency compatibility | Ready | The complete suite passes without the previous Starlette and `httpx` deprecation warning. |
 | Secure negative control | Ready | `app.secure_main` returns HTTP 403 for cross-user access and allowlists owner responses. |
-| Submission documentation | In progress | Architecture and contribution templates exist; team names, provenance approval, repository link, and presentation deck still require participant input. |
+| Submission documentation | Repository work ready | Architecture, checklist, verified screenshots, and a validated 9-slide deck are present. Team names, provenance approval, final repository link, and portal submission still require participant input. |
 
 ## Required technical work
 
@@ -99,12 +99,10 @@ The MVP is technically ready only when all of the following pass:
 
 ## Remaining submission work
 
-1. Obtain organizer confirmation about eligibility of the pre-existing repository and record the approved provenance.
-2. Complete `TEAM_CONTRIBUTIONS.md` with registered participant names and event-period commits.
-3. Create the required 8-10 slide PPT or PDF deck using current architecture and demo evidence.
-4. Add the final repository link and deployment status to the submission.
-5. Rehearse the vulnerable and secure-control flows using `SUBMISSION_CHECKLIST.md`.
-6. Verify the organizers' final deadline, portal, and mandatory checkpoints.
+1. Obtain organizer confirmation about eligibility or starter-material provenance and record the decision.
+2. Confirm that the two commit-derived contributors are the registered team and record the participant reviewer for AI-assisted work.
+3. Obtain the organizers' final-submission process or portal cutoff; the public schedule lists final presentations but no portal deadline.
+4. Upload the validated deck and repository details through that organizer-provided process.
 
 ## Deferred technical features
 

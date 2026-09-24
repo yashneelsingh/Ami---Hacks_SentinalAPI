@@ -37,6 +37,32 @@ flowchart TB
 
 The browser is a presentation layer. Target validation, request limits, response comparison, and secret redaction are enforced by Python code on the server.
 
+## Optional hosted persistence
+
+The hosted data plane is isolated from the intentionally vulnerable demo
+database. It does not weaken the loopback-only scanning boundary.
+
+```mermaid
+flowchart LR
+    API[Hosted API] --> Repo[Tenant-scoped repository]
+    Repo --> Pool[Bounded SQLAlchemy pool]
+    Pool --> PG[(PostgreSQL)]
+    Worker[Scan worker] -->|Atomic lease| Repo
+    Worker -->|Budget increment| Repo
+    Repo --> Scan[Scan and endpoint state]
+    Repo --> Findings[Redacted idempotent findings]
+    Repo --> Credentials[Encrypted expiring credentials]
+    Repo --> Audit[Metadata-only audit trail]
+    Alembic[Alembic migrations] --> PG
+    Maintenance[Expiry, backup, restore] --> PG
+```
+
+Staging and production require PostgreSQL. Development and tests may use a
+separate hosted SQLite database. Organization filters are applied in repository
+queries; job claims use PostgreSQL row locking with `SKIP LOCKED`; database
+updates enforce deadlines and request budgets independently of browser state.
+See `HOSTED_DATABASE.md` for operations and disaster recovery.
+
 ## Detection sequence
 
 1. Parse an OpenAPI 3.x YAML or JSON document without executing YAML tags.

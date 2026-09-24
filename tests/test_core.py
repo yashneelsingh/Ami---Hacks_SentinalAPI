@@ -20,6 +20,8 @@ class CoreScannerTests(unittest.TestCase):
 
     def test_openapi_discovers_order_detail(self):
         document = parse_spec((ROOT / "openapi.yaml").read_text(encoding="utf-8"))
+        self.assertNotIn("patch", document["paths"]["/orders/{order_id}"])
+        self.assertNotIn("patch", app.openapi()["paths"]["/orders/{order_id}"])
         endpoints = discover_object_endpoints(document)
         self.assertEqual(len(endpoints), 1)
         self.assertEqual(endpoints[0].detail_path, "/orders/{order_id}")
