@@ -1,7 +1,8 @@
 # SentinelAPI Scan Report
 
+**Schema version:** 1.2
 **Target:** SentinelAPI Vulnerable Demo
-**Generated:** 2026-09-24T20:38:39.735425+00:00
+**Generated:** 2026-09-24T21:57:28.748711+00:00
 **Scan status:** Completed
 **Result:** Findings
 
@@ -16,6 +17,13 @@
 | Pass | Fail | Inconclusive | Error |
 | --- | --- | --- | --- |
 | 0 | 1 | 0 | 0 |
+
+## Tested endpoints
+
+- `GET /orders/{order_id}`: fail; The requesting user received the same object returned to its owner.
+  - Selected IDs: User A `1001`, User B `1002`; cross-user HTTP `200`.
+
+**Fixture version:** 2026.09.1
 
 ## Findings
 
