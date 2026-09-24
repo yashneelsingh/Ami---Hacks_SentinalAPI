@@ -1,0 +1,85 @@
+{
+  "tool": "SentinelAPI",
+  "target": "Local intentionally vulnerable Order API",
+  "generated_at": "2026-09-24T08:51:44.598082+00:00",
+  "summary": {
+    "Critical": 1,
+    "High": 1,
+    "Medium": 1,
+    "Low": 0,
+    "Pass": 0
+  },
+  "findings": [
+    {
+      "title": "Broken Object Level Authorization",
+      "category": "BOLA",
+      "severity": "Critical",
+      "score": 9.5,
+      "endpoint": "/orders/{id}",
+      "method": "GET",
+      "evidence": "User A requested order 1002, owned by User B, and received HTTP 200 with User B's order data.",
+      "expected_result": "HTTP 403 or HTTP 404 because order 1002 is not owned by User A.",
+      "actual_result": "HTTP 200 with another user's order data.",
+      "remediation": "Verify resource ownership for every object ID before reading, updating, or deleting it.",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:5000/orders/1002",
+        "headers": {
+          "Authorization": "Bearer local-demo-token"
+        }
+      },
+      "metadata": {
+        "requesting_user": "user-a@example.test",
+        "target_owner": "user-b@example.test"
+      }
+    },
+    {
+      "title": "Excessive Data Exposure",
+      "category": "Excessive Data Exposure",
+      "severity": "High",
+      "score": 7.0,
+      "endpoint": "/orders/{id}",
+      "method": "GET",
+      "evidence": "The response included sensitive field(s): internalNotes, paymentReference",
+      "expected_result": "A normal user response should omit internal or secret fields.",
+      "actual_result": "Sensitive fields were returned in the API response.",
+      "remediation": "Return an allowlisted response DTO for this endpoint and exclude internal notes, payment references, tokens, and secrets.",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:5000/orders/1002",
+        "headers": {
+          "Authorization": "Bearer local-demo-token"
+        }
+      },
+      "metadata": {
+        "exposed_fields": [
+          "internalNotes",
+          "paymentReference"
+        ]
+      }
+    },
+    {
+      "title": "Possible Missing Rate Limiting",
+      "category": "Missing Rate Limiting",
+      "severity": "Medium",
+      "score": 5.5,
+      "endpoint": "/auth/login",
+      "method": "POST",
+      "evidence": "All 5 controlled sandbox requests succeeded without a limiting response.",
+      "expected_result": "A sensitive endpoint should enforce a documented rate limit.",
+      "actual_result": "No limiting response was observed during the safe low-volume probe.",
+      "remediation": "Add endpoint-appropriate rate limiting and return HTTP 429 when the threshold is exceeded.",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:5000/auth/login",
+        "json": {
+          "email": "user-a@example.test"
+        }
+      },
+      "metadata": {
+        "attempts": 5,
+        "successful_responses": 5
+      }
+    }
+  ]
+}

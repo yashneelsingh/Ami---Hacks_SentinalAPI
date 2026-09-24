@@ -1,0 +1,43 @@
+import unittest
+
+from scanner.checks import check_excessive_data_exposure, check_rate_limit_observation
+from scanner.reproduction import build_curl
+from scanner.report_generator import build_report, markdown_report
+
+
+class ScannerModuleTests(unittest.TestCase):
+    def test_data_exposure_flags_internal_fields(self):
+        findings = check_excessive_data_exposure(
+            endpoint="/orders/1002",
+            method="GET",
+            response_body={"id": 1002, "internalNotes": "private", "paymentReference": "pay_123"},
+            request={"method": "GET", "url": "http://localhost:5000/orders/1002"},
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, "High")
+        self.assertIn("internalNotes", findings[0].evidence)
+
+    def test_rate_limit_check_is_bounded(self):
+        with self.assertRaises(ValueError):
+            check_rate_limit_observation(
+                endpoint="/auth/login", method="POST", attempts=11, successful_responses=11, request={}
+            )
+
+    def test_curl_masks_authorization_value(self):
+        command = build_curl(
+            {"method": "GET", "url": "http://localhost:5000/orders/1002", "headers": {"Authorization": "Bearer secret"}}
+        )
+        self.assertIn("<TEST_USER_TOKEN>", command)
+        self.assertNotIn("Bearer secret", command)
+
+    def test_markdown_report_contains_reproduction(self):
+        finding = check_excessive_data_exposure(
+            endpoint="/profile", method="GET", response_body={"token": "do-not-return"}, request={"url": "http://localhost:5000/profile"}
+        )[0]
+        report = build_report([finding], "test target")
+        self.assertIn("Safe reproduction command", markdown_report(report))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
