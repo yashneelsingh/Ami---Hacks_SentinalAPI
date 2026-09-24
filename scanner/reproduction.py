@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .redaction import redact_value
+
 
 def build_curl(request: dict[str, Any]) -> str:
     """Build a shell-friendly curl command from a recorded HTTP request.
@@ -14,8 +16,9 @@ def build_curl(request: dict[str, Any]) -> str:
     """
     method = str(request.get("method", "GET")).upper()
     url = str(request.get("url", "http://localhost:5000"))
-    headers = dict(request.get("headers", {}))
-    body: Any = request.get("json")
+    safe_request = redact_value(request)
+    headers = dict(safe_request.get("headers", {}))
+    body: Any = safe_request.get("json")
 
     parts = [f"curl -X {method}", f'"{url}"']
     for name, value in headers.items():

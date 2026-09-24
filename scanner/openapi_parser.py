@@ -10,6 +10,9 @@ from typing import Any
 import yaml
 
 
+MAX_SPEC_BYTES = 250_000
+
+
 @dataclass(frozen=True)
 class ObjectEndpoint:
     collection_path: str
@@ -18,12 +21,21 @@ class ObjectEndpoint:
 
 
 def parse_spec(source: str | dict[str, Any]) -> dict[str, Any]:
+    if isinstance(source, str) and len(source.encode("utf-8")) > MAX_SPEC_BYTES:
+        raise ValueError(f"OpenAPI document exceeds the {MAX_SPEC_BYTES}-byte limit")
     try:
         document = source if isinstance(source, dict) else yaml.safe_load(source)
-    except (yaml.YAMLError, json.JSONDecodeError) as exc:
-        raise ValueError("Invalid OpenAPI document") from exc
-    if not isinstance(document, dict) or not str(document.get("openapi", "")).startswith("3."):
+    except (yaml.YAMLError, json.JSONDecodeError, UnicodeError):
+        raise ValueError("Invalid OpenAPI document") from None
+    if not isinstance(document, dict):
+        raise ValueError("Invalid OpenAPI document: the root must be an object")
+    version = document.get("openapi")
+    if not isinstance(version, str) or not version:
+        raise ValueError("Invalid OpenAPI document: missing openapi version")
+    if not version.startswith("3."):
         raise ValueError("An OpenAPI 3.x document is required")
+    if "paths" not in document:
+        raise ValueError("OpenAPI document is missing paths")
     if not isinstance(document.get("paths"), dict):
         raise ValueError("OpenAPI paths must be an object")
     return document

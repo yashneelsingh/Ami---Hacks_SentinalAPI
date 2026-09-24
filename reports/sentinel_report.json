@@ -1,11 +1,11 @@
 {
   "tool": "SentinelAPI",
-  "target": "SentinelAPI Vulnerable Demo",
-  "generated_at": "2026-09-24T09:56:25.633115+00:00",
+  "target": "Local intentionally vulnerable Order API",
+  "generated_at": "2026-09-24T12:25:53.097408+00:00",
   "summary": {
     "Critical": 1,
     "High": 1,
-    "Medium": 0,
+    "Medium": 1,
     "Low": 0,
     "Pass": 0
   },
@@ -17,22 +17,20 @@
       "score": 9.5,
       "endpoint": "/orders/{order_id}",
       "method": "GET",
-      "evidence": "user-a@example.test requested /orders/1002 (owned by user-b@example.test) and received HTTP 200 with the same object User B received.",
-      "expected_result": "HTTP 403 or HTTP 404 for another user's object.",
-      "actual_result": "HTTP 200; object ID 1002 was returned.",
-      "remediation": "Verify object ownership before returning order details.",
+      "evidence": "User A requested order 1002, owned by User B, and received HTTP 200 with User B's order data.",
+      "expected_result": "HTTP 403 or HTTP 404 because order 1002 is not owned by User A.",
+      "actual_result": "HTTP 200 with another user's order data.",
+      "remediation": "Verify resource ownership for every object ID before reading, updating, or deleting it.",
       "request": {
         "method": "GET",
         "url": "http://127.0.0.1:8000/orders/1002",
         "headers": {
-          "Authorization": "Bearer <TEST_USER_TOKEN>"
+          "Authorization": "Bearer <REDACTED>"
         }
       },
       "metadata": {
         "requesting_user": "user-a@example.test",
-        "target_owner": "user-b@example.test",
-        "owner_a_id": 1001,
-        "owner_b_id": 1002
+        "target_owner": "user-b@example.test"
       }
     },
     {
@@ -48,9 +46,9 @@
       "remediation": "Return an allowlisted response DTO for this endpoint and exclude internal notes, payment references, tokens, and secrets.",
       "request": {
         "method": "GET",
-        "url": "http://127.0.0.1:8000/orders/1001",
+        "url": "http://127.0.0.1:8000/orders/1002",
         "headers": {
-          "Authorization": "Bearer <TEST_USER_TOKEN>"
+          "Authorization": "Bearer <REDACTED>"
         }
       },
       "metadata": {
@@ -59,15 +57,30 @@
           "payment_reference"
         ]
       }
-    }
-  ],
-  "tested_endpoints": [
+    },
     {
-      "method": "GET",
-      "endpoint": "/orders/{order_id}",
-      "owner_a_id": 1001,
-      "owner_b_id": 1002,
-      "cross_user_status": 200
+      "title": "Possible Missing Rate Limiting",
+      "category": "Missing Rate Limiting",
+      "severity": "Medium",
+      "score": 5.5,
+      "endpoint": "/auth/login",
+      "method": "POST",
+      "evidence": "All 5 controlled sandbox requests succeeded without a limiting response.",
+      "expected_result": "A sensitive endpoint should enforce a documented rate limit.",
+      "actual_result": "No limiting response was observed during the safe low-volume probe.",
+      "remediation": "Add endpoint-appropriate rate limiting and return HTTP 429 when the threshold is exceeded.",
+      "request": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/auth/login",
+        "json": {
+          "email": "user-a@example.test",
+          "password": "<REDACTED>"
+        }
+      },
+      "metadata": {
+        "attempts": 5,
+        "successful_responses": 5
+      }
     }
   ]
 }

@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -42,6 +43,61 @@ class CoreScannerTests(unittest.TestCase):
         self.assertEqual(report["summary"]["High"], 1)
         self.assertEqual(report["tested_endpoints"][0]["cross_user_status"], 200)
         self.assertNotIn("demo-token-user-a", str(report))
+
+    def _controlled_scan(self, *, cross_status=403, cross_body=None, same_object_id=False):
+        """Run against deterministic live HTTP responses without a second API app."""
+        object_a = {"id": 1001, "item_name": "Owner A item"}
+        object_b = {"id": 1001 if same_object_id else 1002, "item_name": "Owner B item"}
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            authorization = request.headers.get("authorization")
+            if request.url.path == "/auth/login":
+                email = json.loads(request.content)["email"]
+                token = "token-a" if email == "user-a@example.test" else "token-b"
+                return httpx.Response(200, json={"access_token": token})
+            if request.url.path == "/orders":
+                return httpx.Response(200, json=[object_a if authorization == "Bearer token-a" else object_b])
+            if request.url.path == f"/orders/{object_a['id']}":
+                return httpx.Response(200, json=object_a)
+            if request.url.path == f"/orders/{object_b['id']}" and authorization == "Bearer token-b":
+                return httpx.Response(200, json=object_b)
+            if request.url.path == f"/orders/{object_b['id']}" and authorization == "Bearer token-a":
+                return httpx.Response(cross_status, json=cross_body)
+            return httpx.Response(404, json={"detail": "Not found"})
+
+        return scan(
+            spec=(ROOT / "openapi.yaml").read_text(encoding="utf-8"),
+            base_url="http://127.0.0.1:8000",
+            user_a=Credentials("user-a@example.test", "demo-password-a"),
+            user_b=Credentials("user-b@example.test", "demo-password-b"),
+            transport=httpx.MockTransport(respond),
+        )
+
+    def test_secure_403_produces_clean_report_without_bola(self):
+        report = self._controlled_scan(cross_status=403, cross_body={"detail": "Forbidden"})
+        self.assertEqual(report["findings"], [])
+        self.assertEqual(report["scan_status"], "completed")
+        self.assertEqual(report["result"], "clean")
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "pass")
+
+    def test_secure_404_produces_no_bola(self):
+        report = self._controlled_scan(cross_status=404, cross_body={"detail": "Not found"})
+        self.assertFalse(any(finding["category"] == "BOLA" for finding in report["findings"]))
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "pass")
+
+    def test_mismatched_or_malformed_200_does_not_prove_victim_object(self):
+        for body in ({"id": 9999, "item_name": "Different item"}, ["not", "an", "object"]):
+            with self.subTest(body=body):
+                report = self._controlled_scan(cross_status=200, cross_body=body)
+                self.assertFalse(any(finding["category"] == "BOLA" for finding in report["findings"]))
+                self.assertEqual(report["result"], "inconclusive")
+                self.assertEqual(report["tested_endpoints"][0]["outcome"], "inconclusive")
+
+    def test_same_object_id_is_reported_as_inconclusive(self):
+        report = self._controlled_scan(same_object_id=True)
+        self.assertEqual(report["findings"], [])
+        self.assertEqual(report["result"], "inconclusive")
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "inconclusive")
 
     def test_rejects_nonlocal_targets(self):
         with self.assertRaisesRegex(ValueError, "local sandbox"):

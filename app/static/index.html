@@ -3,50 +3,132 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SentinelAPI | Local scan</title>
+  <meta name="description" content="SentinelAPI authorized local API security scanner">
+  <title>SentinelAPI | Authorized local scan</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="https://unpkg.com/lucide@1.47.0/dist/umd/lucide.min.js"></script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand"><span class="mark">S</span><span>Sentinel<span class="brand-accent">API</span></span></div>
-      <div class="nav-label">WORKSPACE</div>
-      <nav><a class="nav-active" href="/">Overview</a><a href="/docs" target="_blank" rel="noopener">API reference <span aria-hidden="true">↗</span></a></nav>
-      <div class="sidebar-bottom"><span class="status-dot"></span> Local sandbox <span class="sidebar-version">v0.1</span></div>
-    </aside>
-    <main>
-      <header class="topbar"><span>Security workspace <span class="crumb">/</span> Overview</span><span class="topbar-right">Sandbox target <span class="topbar-dot"></span> 127.0.0.1</span></header>
-      <div class="content">
-        <div class="heading-row">
-          <div><div class="eyebrow">SPECIFICATION-DRIVEN TESTING</div><h1>API security overview</h1><p class="lead">Run a controlled, two-user authorization check against the seeded order API.</p></div>
-          <button id="run-scan" class="primary-button" type="button"><span aria-hidden="true">▶</span> Run scan</button>
-        </div>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="SentinelAPI home">
+      <span class="mark" aria-hidden="true"><img src="https://img.icons8.com/ios-filled/100/f23312/shield.png" alt="" referrerpolicy="no-referrer"></span>
+      <span>SentinelAPI</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a class="nav-active" href="/">Scanner</a>
+      <span aria-hidden="true">/</span>
+      <span>Overview</span>
+      <a href="/docs" target="_blank" rel="noopener">API reference <i data-lucide="external-link" aria-hidden="true"></i></a>
+    </nav>
+    <div class="environment" aria-label="Local sandbox status">
+      <span>LOCAL SANDBOX</span>
+      <i aria-hidden="true"></i>
+      <span>127.0.0.1</span>
+    </div>
+  </header>
 
-        <section class="target-section" aria-label="Scan target">
-          <div class="section-heading"><h2>Scan target</h2><span class="section-note">LOCAL DEMO</span></div>
-          <div class="target-grid">
-            <div><span class="field-label">API DEFINITION</span><strong id="spec-name">openapi.yaml</strong><small><label class="spec-picker">Choose OpenAPI file<input id="spec-file" type="file" accept=".yaml,.yml,.json,application/json,text/yaml"></label> · <a href="/openapi.json" target="_blank" rel="noopener">Live spec</a></small></div>
-            <div><span class="field-label">BASE URL</span><strong id="base-url">http://127.0.0.1:8000</strong><small>Loopback only</small></div>
-            <div><span class="field-label">TEST IDENTITIES</span><strong>User A → User B</strong><small>Separate seeded orders · 1001 / 1002</small></div>
-          </div>
-        </section>
-
-        <div class="section-heading results-title"><h2>Results</h2><span id="scan-state" class="scan-state">Not scanned</span></div>
-        <div class="metrics" aria-label="Severity summary">
-          <div class="metric"><span class="metric-label">Critical</span><strong id="count-critical">—</strong><span class="metric-rule critical"></span></div>
-          <div class="metric"><span class="metric-label">High</span><strong id="count-high">—</strong><span class="metric-rule high"></span></div>
-          <div class="metric"><span class="metric-label">Medium</span><strong id="count-medium">—</strong><span class="metric-rule medium"></span></div>
-          <div class="metric"><span class="metric-label">Low</span><strong id="count-low">—</strong><span class="metric-rule low"></span></div>
-        </div>
-
-        <section class="findings-section" aria-label="Findings">
-          <div class="findings-header"><div><h2>Findings <span id="finding-total" class="total">0</span></h2><p>Evidence from authenticated requests</p></div><div class="download-actions"><button id="download-json" type="button" disabled>JSON</button><button id="download-md" type="button" disabled>Markdown</button></div></div>
-          <div id="findings" class="findings"><div class="empty-state"><div class="empty-icon">◎</div><strong>No scan results yet</strong><span>Run a scan to compare access between the two test users.</span></div></div>
-        </section>
-        <p id="error" class="error" role="alert" hidden></p>
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="motif" aria-hidden="true">
+        <svg viewBox="0 0 620 250" preserveAspectRatio="none">
+          <path d="M12 84 H150 C185 84 185 40 220 40 H315" />
+          <path d="M12 168 H150 C185 168 185 212 220 212 H315" />
+          <path d="M315 40 H390 C430 40 430 126 470 126 H606" />
+          <path d="M315 212 H390 C430 212 430 126 470 126" />
+          <circle cx="12" cy="84" r="4" />
+          <circle cx="12" cy="168" r="4" />
+          <circle cx="315" cy="40" r="4" />
+          <circle cx="315" cy="212" r="4" />
+          <circle class="signal-node" cx="606" cy="126" r="5" />
+        </svg>
+        <span class="motif-label label-spec">SPEC</span>
+        <span class="motif-label label-a">USER A</span>
+        <span class="motif-label label-b">USER B</span>
+        <span class="motif-label label-object">OBJECT ID</span>
+        <span class="motif-label label-evidence">EVIDENCE</span>
       </div>
-    </main>
-  </div>
+      <div class="section-kicker"><span>01</span><span>AUTHORIZED API SECURITY</span></div>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1 id="page-title">Find broken object access before release.</h1>
+          <p>Test whether one authenticated user can access another user's order using an OpenAPI definition and controlled local data.</p>
+        </div>
+        <div class="hero-action">
+          <span class="safety-stamp">LOCAL ONLY / SANDBOX</span>
+          <button id="run-scan" class="primary-button" type="button">
+            <i class="button-icon" data-lucide="scan-search" aria-hidden="true"></i>
+            <span class="button-label-long">Run authorized scan</span>
+            <span class="button-label-short">Run scan</span>
+          </button>
+          <small>Read-only comparison · controlled identities</small>
+        </div>
+      </div>
+
+      <div class="target-strip" aria-label="Scan target">
+        <div class="target-item">
+          <span class="technical-label">OPENAPI DEFINITION</span>
+          <strong id="spec-name">openapi.yaml</strong>
+          <p class="target-links"><label class="spec-picker"><i data-lucide="file-up" aria-hidden="true"></i>Choose OpenAPI file<input id="spec-file" type="file" accept=".yaml,.yml,.json,application/json,text/yaml"></label><a href="/openapi.json" target="_blank" rel="noopener">View live spec<i data-lucide="external-link" aria-hidden="true"></i></a></p>
+        </div>
+        <div class="target-item">
+          <span class="technical-label">BASE URL</span>
+          <strong id="base-url">http://127.0.0.1:8000</strong>
+          <p>Loopback target; external hosts are rejected.</p>
+        </div>
+        <div class="target-item identity-item">
+          <span class="technical-label">IDENTITY COMPARISON</span>
+          <div class="identity-flow" aria-label="User A order 1001 compared with User B order 1002">
+            <span><b>A</b><small>1001</small></span>
+            <i aria-hidden="true"></i>
+            <span><b>B</b><small>1002</small></span>
+          </div>
+          <p>User A requests User B's object ID.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-section" aria-labelledby="results-title">
+      <div class="section-header">
+        <div>
+          <div class="section-kicker"><span>02</span><span>SCAN RESULTS</span></div>
+          <h2 id="results-title">What the comparison found</h2>
+        </div>
+        <div id="scan-state" class="scan-state" aria-live="polite">READY TO SCAN</div>
+      </div>
+      <div class="metrics" aria-label="Severity summary">
+        <div class="metric critical-metric"><span class="technical-label">CRITICAL</span><strong id="count-critical">—</strong><small>Confirmed access flaws</small></div>
+        <div class="metric high-metric"><span class="technical-label">HIGH</span><strong id="count-high">—</strong><small>High-impact exposures</small></div>
+        <div class="metric medium-metric"><span class="technical-label">MEDIUM</span><strong id="count-medium">—</strong><small>Review recommended</small></div>
+        <div class="metric low-metric"><span class="technical-label">LOW</span><strong id="count-low">—</strong><small>Minor observations</small></div>
+      </div>
+    </section>
+
+    <section class="findings-section" aria-labelledby="findings-title">
+      <div class="section-header findings-heading">
+        <div>
+          <div class="section-kicker"><span>03</span><span>CONFIRMED FINDINGS</span></div>
+          <h2 id="findings-title">Evidence you can reproduce</h2>
+        </div>
+        <div class="findings-actions">
+          <span id="finding-total" class="finding-total" aria-live="polite">0 CONFIRMED</span>
+          <button id="download-json" class="secondary-button" type="button" disabled><i data-lucide="download" aria-hidden="true"></i>Download JSON</button>
+          <button id="download-md" class="secondary-button" type="button" disabled><i data-lucide="download" aria-hidden="true"></i>Download MD</button>
+        </div>
+      </div>
+      <div id="findings" class="findings">
+        <div class="empty-state">
+          <i class="empty-mark" data-lucide="scan-search" aria-hidden="true"></i>
+          <div><strong>Ready for an authorized comparison.</strong><p>Run the local sandbox scan to test object ownership between User A and User B.</p></div>
+        </div>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+    </section>
+  </main>
+
+  <footer>
+    <span>SENTINELAPI / V0.1</span>
+    <span>AUTHORIZED LOCAL TESTING ONLY · <a href="https://icons8.com/icons/set/api-with-shield" target="_blank" rel="noopener">Logo by Icons8<i data-lucide="external-link" aria-hidden="true"></i></a></span>
+  </footer>
 </body>
 </html>

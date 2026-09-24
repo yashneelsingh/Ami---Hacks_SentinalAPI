@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 from .models import Finding
+from .redaction import redact_value
 from .reproduction import build_curl
 from .severity import sort_key
 
@@ -18,15 +19,16 @@ def _summary(findings: list[Finding]) -> dict[str, int]:
     return {severity: counts.get(severity, 0) for severity in ("Critical", "High", "Medium", "Low", "Pass")}
 
 
-def build_report(findings: Iterable[Finding], target_name: str) -> dict:
+def build_report(findings: Iterable[Finding], target_name: str, *, secrets: Iterable[str] = ()) -> dict:
     ordered = sorted(list(findings), key=sort_key, reverse=True)
-    return {
+    report = {
         "tool": "SentinelAPI",
         "target": target_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": _summary(ordered),
         "findings": [finding.to_dict() for finding in ordered],
     }
+    return redact_value(report, secrets)
 
 
 def markdown_report(report: dict) -> str:
@@ -36,6 +38,8 @@ def markdown_report(report: dict) -> str:
         "",
         f"**Target:** {report['target']}",
         f"**Generated:** {report['generated_at']}",
+        f"**Scan status:** {report.get('scan_status', 'completed').capitalize()}",
+        f"**Result:** {report.get('result', 'findings' if report.get('findings') else 'clean').capitalize()}",
         "",
         "## Summary",
         "",
@@ -46,7 +50,12 @@ def markdown_report(report: dict) -> str:
     ]
     findings = report["findings"]
     if not findings:
-        lines.extend(["## Findings", "", "No confirmed findings were recorded."])
+        message = (
+            "The scan completed successfully with no confirmed findings."
+            if report.get("result", "clean") == "clean"
+            else "The scan completed, but the ownership comparison was inconclusive."
+        )
+        lines.extend(["## Findings", "", message])
         return "\n".join(lines) + "\n"
 
     lines.extend(["## Findings", ""])

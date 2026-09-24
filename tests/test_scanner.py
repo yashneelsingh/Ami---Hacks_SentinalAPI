@@ -1,8 +1,12 @@
 import unittest
+from pathlib import Path
 
 from scanner.checks import check_excessive_data_exposure, check_rate_limit_observation
 from scanner.reproduction import build_curl
 from scanner.report_generator import build_report, markdown_report
+
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class ScannerModuleTests(unittest.TestCase):
@@ -46,6 +50,19 @@ class ScannerModuleTests(unittest.TestCase):
         )[0]
         report = build_report([finding], "test target")
         self.assertIn("Safe reproduction command", markdown_report(report))
+
+    def test_markdown_report_identifies_successful_clean_scan(self):
+        report = build_report([], "secure target")
+        report.update({"scan_status": "completed", "result": "clean"})
+        markdown = markdown_report(report)
+        self.assertIn("**Scan status:** Completed", markdown)
+        self.assertIn("**Result:** Clean", markdown)
+        self.assertIn("completed successfully with no confirmed findings", markdown)
+
+    def test_dashboard_renders_clean_scan_as_complete(self):
+        dashboard_script = (ROOT / "app" / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('"No confirmed findings."', dashboard_script)
+        self.assertIn('setScanState("SCAN COMPLETE", "done")', dashboard_script)
 
 
 if __name__ == "__main__":

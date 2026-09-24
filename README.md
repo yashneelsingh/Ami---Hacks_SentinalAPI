@@ -52,10 +52,27 @@ The response is User B's order (`owner_id: 2`) despite User A's authenticated to
 
 ## Reset and test
 
-Reset seeded data after tests or a `PATCH` request:
+Reset seeded data after tests or a `PATCH` request. The reset is local-only and
+rewrites the fixed `data/sentinel_demo.db` database in one transaction; it does
+not delete or replace the database file, so it is safe to run on Windows while
+the local server process has the file open:
 
 ```powershell
 python -m app.seed
+```
+
+The command verifies that User A owns order `1001` and User B owns order `1002`.
+For a fully deterministic stop-reset-start cycle, stop Uvicorn with `Ctrl+C`, then
+run:
+
+```powershell
+python -m app.seed
+uvicorn app.main:app --reload
+```
+
+Run the automated checks separately:
+
+```powershell
 python -m unittest discover -s tests -v
 python -m scanner.demo
 ```

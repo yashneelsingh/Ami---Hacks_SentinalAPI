@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelAPI real-world auth test</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 900px; margin: 3rem auto; padding: 0 1rem; color: #17202a; }
+    h1 { margin-bottom: .25rem; }
+    #status { color: #52606d; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    th, td { border: 1px solid #ccd6dd; padding: .65rem; text-align: left; vertical-align: top; }
+    th { background: #f2f5f7; }
+    .pass { color: #08783f; font-weight: 700; }
+    .fail { color: #b42318; font-weight: 700; }
+    code { font-size: .9em; }
+  </style>
+</head>
+<body>
+  <h1>SentinelAPI real-world auth test</h1>
+  <p>Target: <code>https://dummyjson.com</code> using its published demo identity. Tokens are never rendered.</p>
+  <p id="status">Running four bounded authentication checks…</p>
+  <table aria-label="Authentication test results">
+    <thead><tr><th>Case</th><th>Expected</th><th>Actual</th><th>Result</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+  <script>
+    const results = document.querySelector('#results');
+    const status = document.querySelector('#status');
+
+    function add(caseName, expected, actual, passed) {
+      const row = document.createElement('tr');
+      for (const value of [caseName, expected, actual]) {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      const result = document.createElement('td');
+      result.textContent = passed ? 'PASS' : 'FAIL';
+      result.className = passed ? 'pass' : 'fail';
+      row.appendChild(result);
+      results.appendChild(row);
+      return passed;
+    }
+
+    async function jsonOrEmpty(response) {
+      try { return await response.json(); } catch { return {}; }
+    }
+
+    (async () => {
+      const checks = [];
+      try {
+        const login = await fetch('https://dummyjson.com/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'emilys', password: 'emilyspass', expiresInMins: 30 })
+        });
+        const loginBody = await jsonOrEmpty(login);
+        const hasToken = typeof loginBody.accessToken === 'string' && loginBody.accessToken.length > 20;
+        checks.push(add(
+          'Valid published demo login',
+          'HTTP 200, user id 1 / emilys, non-empty access token',
+          `HTTP ${login.status}, id ${loginBody.id ?? 'missing'}, username ${loginBody.username ?? 'missing'}, token ${hasToken ? 'present (redacted)' : 'missing'}`,
+          login.status === 200 && loginBody.id === 1 && loginBody.username === 'emilys' && hasToken
+        ));
+
+        const me = await fetch('https://dummyjson.com/auth/me', {
+          headers: { Authorization: `Bearer ${loginBody.accessToken || ''}` }
+        });
+        const meBody = await jsonOrEmpty(me);
+        checks.push(add(
+          'Authenticated identity lookup',
+          'HTTP 200 and same user id / username as login',
+          `HTTP ${me.status}, id ${meBody.id ?? 'missing'}, username ${meBody.username ?? 'missing'}`,
+          me.status === 200 && meBody.id === loginBody.id && meBody.username === loginBody.username
+        ));
+
+        const missing = await fetch('https://dummyjson.com/auth/me');
+        const missingBody = await jsonOrEmpty(missing);
+        checks.push(add(
+          'Missing bearer token',
+          'HTTP 401',
+          `HTTP ${missing.status}, message ${missingBody.message ?? 'missing'}`,
+          missing.status === 401
+        ));
+
+        const invalid = await fetch('https://dummyjson.com/auth/me', {
+          headers: { Authorization: 'Bearer sentinelapi-intentionally-invalid-token' }
+        });
+        const invalidBody = await jsonOrEmpty(invalid);
+        checks.push(add(
+          'Invalid bearer token',
+          'HTTP 401',
+          `HTTP ${invalid.status}, message ${invalidBody.message ?? 'missing'}`,
+          invalid.status === 401
+        ));
+
+        const passed = checks.filter(Boolean).length;
+        status.textContent = `Complete: ${passed}/${checks.length} checks passed.`;
+        status.className = passed === checks.length ? 'pass' : 'fail';
+      } catch (error) {
+        status.textContent = `Test could not complete: ${error.message}`;
+        status.className = 'fail';
+      }
+    })();
+  </script>
+</body>
+</html>

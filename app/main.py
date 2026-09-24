@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.database import database_session, ensure_database
 from scanner.core import Credentials, scan
+from scanner.openapi_parser import MAX_SPEC_BYTES
 from scanner.report_generator import markdown_report, write_reports
 
 
@@ -38,7 +39,7 @@ class OrderUpdate(BaseModel):
 
 
 class ScanRequest(BaseModel):
-    spec: str | None = Field(default=None, max_length=250_000)
+    spec: str | None = None
 
 
 def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)] = None) -> dict:
@@ -76,6 +77,8 @@ def dashboard() -> FileResponse:
 
 @app.post("/api/scan", tags=["scanner"])
 def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
+    if options and options.spec and len(options.spec.encode("utf-8")) > MAX_SPEC_BYTES:
+        raise HTTPException(status_code=413, detail=f"OpenAPI document exceeds the {MAX_SPEC_BYTES}-byte limit")
     spec = options.spec if options and options.spec else (ROOT / "openapi.yaml").read_text(encoding="utf-8")
     try:
         report = scan(
@@ -85,7 +88,7 @@ def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
             user_b=Credentials("user-b@example.test", "demo-password-b"),
         )
     except (ValueError, httpx.HTTPError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail=str(exc)) from None
     write_reports(report, ROOT / "reports")
     return {"report": report, "markdown": markdown_report(report)}
 
