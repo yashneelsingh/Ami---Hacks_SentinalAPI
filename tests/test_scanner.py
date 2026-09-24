@@ -80,10 +80,10 @@ class ScannerModuleTests(unittest.TestCase):
 
     def test_dashboard_renders_clean_scan_as_complete(self):
         dashboard_script = (ROOT / "app" / "static" / "app.js").read_text(encoding="utf-8")
-        self.assertIn('"No confirmed findings."', dashboard_script)
-        self.assertIn('setScanState("TESTING OBJECT OWNERSHIP…", "running")', dashboard_script)
-        self.assertIn('setScanState("SCAN COMPLETE", "done")', dashboard_script)
-        self.assertIn('setScanState("SCAN FAILED", "failed")', dashboard_script)
+        self.assertIn('report.result === "clean"', dashboard_script)
+        self.assertIn('"Completed clean"', dashboard_script)
+        self.assertIn('"Inconclusive"', dashboard_script)
+        self.assertIn('setScanState("Scan failed", "failed")', dashboard_script)
 
     def test_dashboard_uses_only_local_assets_and_report_downloads(self):
         dashboard = (ROOT / "app" / "static" / "index.html").read_text(encoding="utf-8")

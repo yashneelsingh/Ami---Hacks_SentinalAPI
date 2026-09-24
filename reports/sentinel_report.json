@@ -2,7 +2,7 @@
   "tool": "SentinelAPI",
   "version": "1.1",
   "target": "SentinelAPI Vulnerable Demo",
-  "generated_at": "2026-09-24T16:38:52.059882+00:00",
+  "generated_at": "2026-09-24T20:38:39.735425+00:00",
   "summary": {
     "Critical": 1,
     "High": 1,

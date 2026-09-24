@@ -16,7 +16,7 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000/` for the local scanner UI. Enter the local API base URL, optionally choose its OpenAPI 3.x YAML or JSON file, then click **Run authorized scan**. The default uses the checked-in OpenAPI document and current local server. The scanner logs in as both seeded users, discovers their order IDs from `GET /orders`, and tests User A's access to User B's order. Only `http://localhost`, `http://127.0.0.1`, and `http://[::1]` origins are accepted.
 
-The dashboard uses only checked-in HTML, CSS, and JavaScript. It does not load fonts, icons, trackers, or images from third-party services. After a completed scan, JSON and Markdown download buttons fetch the latest server-generated report with caching disabled.
+The dashboard uses only checked-in HTML, CSS, and JavaScript. It does not load fonts, icons, trackers, or images from third-party services. Its results view shows the live owner baselines, cross-user HTTP response, endpoint outcome, and confirmed findings separately. Changing the target or specification clears the prior result. After a completed scan, JSON and Markdown download buttons fetch the latest server-generated report with caching disabled.
 
 The live API definition is at `http://127.0.0.1:8000/openapi.json`; the checked-in copy is [`openapi.yaml`](openapi.yaml). Swagger UI is at `http://127.0.0.1:8000/docs`.
 

@@ -1,181 +1,226 @@
 const runButton = document.getElementById("run-scan");
-const findingsRoot = document.getElementById("findings");
-const errorBox = document.getElementById("error");
-const stateLabel = document.getElementById("scan-state");
-const jsonButton = document.getElementById("download-json");
-const mdButton = document.getElementById("download-md");
 const specFile = document.getElementById("spec-file");
 const baseUrlInput = document.getElementById("base-url-input");
+const stateLabel = document.getElementById("scan-state");
+const errorBox = document.getElementById("error");
+const findingsRoot = document.getElementById("findings");
+const jsonButton = document.getElementById("download-json");
+const mdButton = document.getElementById("download-md");
 let lastResult = null;
-
-const ICON_MARKUP = {
-  "badge-check": '<path d="m9 12 2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle>',
-  check: '<path d="m5 12 4 4L19 6"></path>',
-  "circle-check": '<path d="m8 12 2.5 2.5L16 9"></path><circle cx="12" cy="12" r="9"></circle>',
-  copy: '<rect x="8" y="8" width="11" height="11" rx="1"></rect><path d="M16 8V5H5v11h3"></path>',
-  download: '<path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path>',
-  "external-link": '<path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M18 13v6H5V6h6"></path>',
-  "file-up": '<path d="M14 2H6v20h12V6Z"></path><path d="M14 2v4h4"></path><path d="M12 17V10"></path><path d="m9 13 3-3 3 3"></path>',
-  link: '<path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path>',
-  "scan-search": '<path d="M4 7V4h3"></path><path d="M17 4h3v3"></path><path d="M20 17v3h-3"></path><path d="M7 20H4v-3"></path><circle cx="11" cy="11" r="4"></circle><path d="m14 14 4 4"></path>',
-};
-
-function renderIcons(root = document) {
-  const nodes = [];
-  if (root.matches?.("[data-lucide]")) nodes.push(root);
-  nodes.push(...root.querySelectorAll("[data-lucide]"));
-  for (const node of nodes) {
-    const name = node.dataset.lucide;
-    const markup = ICON_MARKUP[name];
-    if (!markup) continue;
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "1.7");
-    svg.setAttribute("stroke-linecap", "round");
-    svg.setAttribute("stroke-linejoin", "round");
-    svg.setAttribute("aria-hidden", "true");
-    svg.className.baseVal = node.className;
-    svg.innerHTML = markup;
-    node.replaceWith(svg);
-  }
-}
 
 baseUrlInput.value = location.origin;
 
-specFile.addEventListener("change", () => {
-  document.getElementById("spec-name").textContent = specFile.files[0]?.name || "openapi.yaml";
-});
-
-function element(tag, className, text) {
+function el(tag, className = "", content) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (text !== undefined) node.textContent = String(text);
+  if (content !== undefined) node.textContent = String(content);
   return node;
 }
 
-function icon(name, className = "") {
-  const node = element("i", className);
-  node.setAttribute("data-lucide", name);
-  node.setAttribute("aria-hidden", "true");
-  return node;
+function setText(id, value) {
+  document.getElementById(id).textContent = String(value);
 }
 
-function downloadReport(format) {
-  const link = document.createElement("a");
-  link.href = `/api/reports/sentinel_report.${format}`;
-  link.download = `sentinel_report.${format}`;
-  link.hidden = true;
-  document.body.append(link);
-  link.click();
-  link.remove();
+function updateTarget() {
+  const value = baseUrlInput.value.trim();
+  try {
+    setText("header-target", new URL(value).host);
+  } catch {
+    setText("header-target", "Target not set");
+  }
+}
+
+function updateSpec() {
+  const name = specFile.files[0]?.name || "openapi.yaml";
+  setText("spec-name", name);
+  setText("spec-source", specFile.files[0] ? "Using the selected local file" : "Using the checked-in demo specification");
+}
+
+baseUrlInput.addEventListener("input", () => { updateTarget(); invalidateResult(); });
+specFile.addEventListener("change", () => { updateSpec(); invalidateResult(); });
+updateTarget();
+
+function setScanState(label, className = "") {
+  stateLabel.textContent = label;
+  stateLabel.className = `scan-state ${className}`.trim();
+}
+
+function renderEndpointTable(endpoints) {
+  const rows = document.getElementById("endpoint-rows");
+  rows.replaceChildren();
+  setText("endpoint-total", `${endpoints.length} tested`);
+  if (!endpoints.length) {
+    const row = el("tr");
+    const cell = el("td", "table-empty", "No endpoints were tested. Review the scan status and selected specification.");
+    cell.colSpan = 5;
+    row.append(cell);
+    rows.append(row);
+    return;
+  }
+  for (const endpoint of endpoints) {
+    const row = el("tr");
+    const cells = [
+      ["Method & endpoint", `${endpoint.method} ${endpoint.endpoint}`],
+      ["User A object", endpoint.owner_a_id ?? "Unavailable"],
+      ["User B object", endpoint.owner_b_id ?? "Unavailable"],
+      ["Cross-user HTTP", endpoint.cross_user_status == null ? "Unavailable" : `HTTP ${endpoint.cross_user_status}`],
+    ];
+    for (const [label, value] of cells) {
+      const cell = el("td", "", value);
+      cell.dataset.label = label;
+      row.append(cell);
+    }
+    const outcomeCell = el("td");
+    outcomeCell.dataset.label = "Outcome";
+    outcomeCell.append(el("span", `outcome ${endpoint.outcome || "inconclusive"}`, endpoint.outcome || "inconclusive"));
+    row.append(outcomeCell);
+    rows.append(row);
+  }
+}
+
+function renderComparison(report) {
+  const root = document.getElementById("comparison-content");
+  const status = document.getElementById("comparison-status");
+  root.replaceChildren();
+  const endpoint = (report.tested_endpoints || [])[0];
+  if (!endpoint) {
+    status.textContent = "No check completed";
+    status.className = "comparison-status inconclusive";
+    root.append(el("div", "comparison-empty", "No ownership comparison was completed. Review the scan status and specification."));
+    return;
+  }
+  status.textContent = endpoint.outcome === "fail" ? "Ownership failed" : endpoint.outcome === "pass" ? "Ownership enforced" : endpoint.outcome;
+  status.className = `comparison-status ${endpoint.outcome}`;
+  const flow = el("div", "comparison-flow");
+  const steps = [
+    ["USER A BASELINE", endpoint.owner_a_id, "A's own object ID"],
+    ["USER B BASELINE", endpoint.owner_b_id, "B's own object ID"],
+    ["A REQUESTS B'S OBJECT", endpoint.cross_user_status == null ? "No response" : `HTTP ${endpoint.cross_user_status}`, `Object ID ${endpoint.owner_b_id ?? "unavailable"}`],
+  ];
+  steps.forEach(([label, value, detail], index) => {
+    const step = el("div", `comparison-step${index === 2 ? " cross" : ""}`);
+    step.append(el("span", "", label), el("strong", "", value ?? "Unavailable"), el("p", "", detail));
+    flow.append(step);
+  });
+  const conclusion = el("div", "comparison-conclusion");
+  conclusion.append(
+    el("strong", "", endpoint.outcome === "fail" ? "Confirmed ownership violation" : endpoint.outcome === "pass" ? "Cross-user access blocked" : "Result needs review"),
+    el("p", "", endpoint.reason || "The comparison did not provide a conclusive reason.")
+  );
+  root.append(flow, conclusion);
 }
 
 function buildCommand(finding) {
   const request = finding.request || {};
-  const method = request.method || finding.method || "GET";
-  const url = request.url || "";
-  const parts = [`curl -X ${method}`, `"${url}"`];
+  const parts = [`curl -X ${request.method || finding.method || "GET"}`, `"${request.url || ""}"`];
   for (const [name, value] of Object.entries(request.headers || {})) {
-    parts.push(`-H "${name}: ${value}"`);
-  }
-  if (request.json) {
-    parts.push('-H "Content-Type: application/json"');
-    parts.push(`-d '${JSON.stringify(request.json)}'`);
+    const safeValue = name.toLowerCase() === "authorization" ? "Bearer <TEST_USER_TOKEN>" : value;
+    parts.push(`-H "${name}: ${safeValue}"`);
   }
   return parts.join(" ");
 }
 
-function detailGroup(label, value, className = "") {
-  const group = element("div", className);
-  group.append(element("span", "", label), element("p", "", value));
+function detail(label, value) {
+  const group = el("div");
+  group.append(el("span", "", label), el("p", "", value || "Not available"));
   return group;
 }
 
 function renderFinding(finding) {
-  const article = element("article", "finding");
-  const top = element("div", "finding-top");
-  const title = element("div", "finding-title");
-  title.append(
-    element("span", `badge ${finding.severity.toLowerCase()}`, finding.severity),
-    element("strong", "", finding.title),
-    element("span", "verified technical-label", "CONFIRMED")
-  );
-  title.lastElementChild.prepend(icon("badge-check"));
-  top.append(title, element("span", "score", `${finding.score}/10`));
-  article.append(top, element("div", "endpoint", `${finding.method} ${finding.endpoint}`));
-  article.append(element("p", "", finding.evidence));
-
-  const details = element("details");
-  details.append(element("summary", "", "Show evidence and test-only reproduction"));
-  const grid = element("div", "finding-detail");
+  const article = el("article", "finding");
+  const top = el("div", "finding-top");
+  const title = el("div", "finding-title");
+  title.append(el("span", `badge ${finding.severity.toLowerCase()}`, finding.severity), el("strong", "", finding.title), el("span", "verified", "Confirmed"));
+  top.append(title, el("span", "score", `${finding.score}/10`));
+  article.append(top, el("div", "endpoint", `${finding.method} ${finding.endpoint}`), el("p", "", finding.evidence));
+  const details = el("details");
+  details.append(el("summary", "", "View evidence and safe reproduction"));
+  const grid = el("div", "finding-detail");
   grid.append(
-    detailGroup("EXPECTED", finding.expected_result, "expected"),
-    detailGroup("OBSERVED", finding.actual_result, "observed"),
-    detailGroup("REMEDIATION", finding.remediation, "remediation")
+    detail("EXPECTED", finding.expected_result),
+    detail("OBSERVED", finding.actual_result),
+    detail("WHY IT MATTERS", finding.category === "BOLA" ? "An authenticated user could receive an object owned by another user." : "The API returned fields that should not be included in a normal user response."),
+    detail("FIX", finding.remediation)
   );
   details.append(grid);
-
   const command = buildCommand(finding);
-  const repro = element("div", "repro");
-  const head = element("div", "repro-head");
-  head.append(element("span", "repro-label", "TEST-ONLY REPRODUCTION REQUEST"));
-  const copy = element("button", "copy-button");
+  const repro = el("div", "repro");
+  const head = el("div", "repro-head");
+  head.append(el("span", "repro-label", "TEST-ONLY REPRODUCTION REQUEST"));
+  const copy = el("button", "copy-button", "Copy request");
   copy.type = "button";
-  copy.append(icon("copy"), element("span", "", "Copy request"));
   copy.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(command);
-    copy.replaceChildren(icon("check"), element("span", "", "Copied"));
-    renderIcons(copy);
-    setTimeout(() => {
-      copy.replaceChildren(icon("copy"), element("span", "", "Copy request"));
-      renderIcons(copy);
-    }, 1500);
+    try {
+      await navigator.clipboard.writeText(command);
+      copy.textContent = "Copied";
+    } catch {
+      copy.textContent = "Copy unavailable";
+    }
+    setTimeout(() => { copy.textContent = "Copy request"; }, 1800);
   });
   head.append(copy);
-  repro.append(head, element("pre", "", command));
+  repro.append(head, el("pre", "", command));
   details.append(repro);
   article.append(details);
-  renderIcons(article);
   return article;
 }
 
-function setScanState(text, className = "") {
-  stateLabel.textContent = text;
-  stateLabel.className = `scan-state ${className}`.trim();
-}
-
 function render(report) {
-  for (const severity of ["Critical", "High", "Medium", "Low"]) {
-    document.getElementById(`count-${severity.toLowerCase()}`).textContent = report.summary[severity] || 0;
-  }
+  const endpoints = report.tested_endpoints || [];
   const count = report.findings.length;
-  document.getElementById("finding-total").textContent = `${count} CONFIRMED`;
+  renderEndpointTable(endpoints);
+  renderComparison(report);
   findingsRoot.replaceChildren(...report.findings.map(renderFinding));
   if (!count) {
-    const empty = element("div", "empty-state");
-    empty.append(icon("circle-check", "empty-mark"));
-    const copy = element("div");
-    copy.append(
-      element("strong", "", "No confirmed findings."),
-      element("p", "", "The sandbox checks completed without an ownership violation.")
-    );
-    empty.append(copy);
+    const empty = el("div", "empty-state");
+    empty.append(el("strong", "", report.result === "clean" ? "No confirmed findings in the completed checks." : "No confirmed findings; some checks were inconclusive."));
+    empty.append(el("p", "", "Review the tested endpoint outcome above before interpreting this result."));
     findingsRoot.append(empty);
   }
-  renderIcons(findingsRoot);
-  setScanState("SCAN COMPLETE", "done");
+  const label = report.result === "clean" ? "Completed clean" : report.result === "inconclusive" ? "Inconclusive" : "Completed with findings";
+  setScanState(label, report.result === "findings" ? "findings" : report.result);
+  setText("finding-total", `${count} confirmed finding${count === 1 ? "" : "s"}`);
   jsonButton.disabled = false;
   mdButton.disabled = false;
 }
 
+function clearPreviousReport() {
+  lastResult = null;
+  jsonButton.disabled = true;
+  mdButton.disabled = true;
+  setText("finding-total", "Awaiting result");
+  setText("endpoint-total", "Waiting for result");
+  document.getElementById("comparison-status").textContent = "Awaiting response";
+  document.getElementById("comparison-status").className = "comparison-status";
+  document.getElementById("comparison-content").replaceChildren(el("div", "comparison-empty", "Testing the selected local API…"));
+  document.getElementById("endpoint-rows").replaceChildren();
+  findingsRoot.replaceChildren(el("div", "empty-state", "Waiting for scan results…"));
+}
+
+function invalidateResult() {
+  if (!lastResult && stateLabel.textContent === "Ready to scan") return;
+  clearPreviousReport();
+  setScanState("Ready to scan");
+  setText("finding-total", "Not yet scanned");
+  setText("endpoint-total", "Not yet tested");
+  document.getElementById("comparison-status").textContent = "Awaiting scan";
+  document.getElementById("comparison-content").replaceChildren(el("div", "comparison-empty", "Run a scan to compare live responses."));
+  const row = el("tr");
+  const cell = el("td", "table-empty", "No endpoints tested yet. Run a scan to populate this table.");
+  cell.colSpan = 5;
+  row.append(cell);
+  document.getElementById("endpoint-rows").append(row);
+  findingsRoot.replaceChildren(el("div", "empty-state", "Run the local scan to inspect live evidence."));
+  errorBox.hidden = true;
+}
+
 runButton.addEventListener("click", async () => {
+  clearPreviousReport();
   runButton.disabled = true;
   runButton.setAttribute("aria-busy", "true");
   runButton.querySelector(".button-label-long").textContent = "Testing object ownership…";
   runButton.querySelector(".button-label-short").textContent = "Testing…";
-  setScanState("TESTING OBJECT OWNERSHIP…", "running");
+  setScanState("Testing object ownership…", "running");
   errorBox.hidden = true;
   try {
     const baseUrl = baseUrlInput.value.trim();
@@ -185,17 +230,19 @@ runButton.addEventListener("click", async () => {
     }
     const body = { base_url: baseUrl };
     if (specFile.files[0]) body.spec = await specFile.files[0].text();
-    const response = await fetch("/api/scan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch("/api/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || `Scan failed: HTTP ${response.status}`);
     lastResult = payload;
     render(payload.report);
   } catch (error) {
-    setScanState("SCAN FAILED", "failed");
+    setScanState("Scan failed", "failed");
+    setText("finding-total", "No report generated");
+    setText("endpoint-total", "Not completed");
+    document.getElementById("comparison-status").textContent = "No check completed";
+    document.getElementById("comparison-status").className = "comparison-status error";
+    document.getElementById("comparison-content").replaceChildren(el("div", "comparison-empty", "No ownership comparison completed. Correct the issue and run the scan again."));
+    if (/target|origin|loopback/i.test(error.message)) baseUrlInput.focus();
     errorBox.textContent = error.message;
     errorBox.hidden = false;
   } finally {
@@ -206,12 +253,16 @@ runButton.addEventListener("click", async () => {
   }
 });
 
-jsonButton.addEventListener("click", () => {
-  if (lastResult) downloadReport("json");
-});
+function downloadReport(format) {
+  if (!lastResult) return;
+  const link = document.createElement("a");
+  link.href = `/api/reports/sentinel_report.${format}`;
+  link.download = `sentinel_report.${format}`;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
 
-mdButton.addEventListener("click", () => {
-  if (lastResult) downloadReport("md");
-});
-
-renderIcons();
+jsonButton.addEventListener("click", () => downloadReport("json"));
+mdButton.addEventListener("click", () => downloadReport("md"));

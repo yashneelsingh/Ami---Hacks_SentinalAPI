@@ -1,168 +1,125 @@
-# SentinelAPI design direction
+# SentinelAPI product experience and design direction
 
-## Reference and intent
+## Purpose and reference
 
-This interface takes its visual direction from the [Orderful design reference](https://getdesign.md/design-md/orderful?q=tech&category=fintech): a calm, editorial white canvas; fine technical lines; oversized, low-weight type; and a single high-contrast signal colour. Do not copy Orderful's logo, wording, illustrations, or brand assets. Apply the visual language to SentinelAPI's own security-scanning workflow.
+This document guides SentinelAPI's browser interface. The supplied image is a visual reference, not a feature specification. Borrow its calm light workspace, left navigation, soft card boundaries, readable central data area, and compact summary row. Do not copy its healthcare brand, people, metrics, chart, labels, or actions.
 
-SentinelAPI should feel like a precise security instrument, not a generic SaaS dashboard or a "hacker" interface. A judge should understand three things immediately:
+SentinelAPI is a local, specification-driven API scanner. It proves whether User A can read User B's object, shows what the API returned, and gives an engineer a safe way to reproduce and fix the issue. Completing and understanding that task matters more than visual polish. The reference is adapted to SentinelAPI's workflow rather than copied literally.
 
-1. The target is a controlled local sandbox.
-2. The scanner compares access between two authenticated users.
-3. Any finding is backed by evidence and an exact reproduction request.
+## The user's path
 
-## Visual principles
+1. **Orient:** see the local target, selected OpenAPI document, and authorized, loopback-only, read-only boundary.
+2. **Set up:** use the default sandbox or choose a supported OpenAPI YAML/JSON file and local base URL. Explain that the scanner uses two fixed sandbox identities; credentials are not entered in the browser.
+3. **Run:** place one obvious **Run authorized scan** action beside the setup. While it runs, disable repeat submission and show **Testing object ownership…** as text.
+4. **Understand:** show an overall outcome, the endpoint tested, owner baselines, and the cross-user response. A severity count alone does not explain the test.
+5. **Act:** show expected and observed behavior, impact, remediation, and a redacted test-only reproduction request. Offer JSON and Markdown reports when generated.
+6. **Check the control:** explain how to use `openapi-secure.yaml` with `http://127.0.0.1:8011`. Never imply the control ran unless it did.
 
-- **Editorial before dashboard:** use generous whitespace, large plain-language headings, and only the information needed for the current decision.
-- **Technical, not decorative:** connection lines, coordinate marks, and small monospaced labels may explain the scanner flow. They must never obscure text or simulate a vulnerability.
-- **One action per moment:** the primary scan action is visually unmistakable. Secondary actions are quiet outlined buttons.
-- **Evidence earns emphasis:** red-orange means a confirmed high-severity issue, not a general accent for every element.
-- **Safety is visible:** retain the local-only and sandbox labels in the shell and near the scan action.
+Before a scan, the page should answer **what will be tested, whether the target is allowed, and what to do next**. After a scan, it should answer **what happened, how strong the evidence is, and what to fix**.
 
-## Tokens
+## Translating the image into SentinelAPI
 
-Use CSS custom properties. The values below are starting points; do not introduce gradients, glass effects, rounded pills, or a second accent colour.
+| Reference pattern | SentinelAPI use | Reason |
+| --- | --- | --- |
+| Quiet application frame | Compact brand header, local-sandbox state, target host, and API reference | Preserve orientation without dedicating a full sidebar to one-page anchor links. |
+| Greeting and location | Direct product heading and current local target | Orientation is more useful than a personal greeting, location picker, or notification badge. |
+| Three tinted summary tiles | Omitted from the final interface | The same facts already appear in scan setup and result status; repeating them adds visual noise. |
+| Large central chart | Ownership comparison: A's object, B's object, and A's request for B's object | HTTP response and object match are the decisive evidence; a trend chart would mislead. |
+| Right-side people card | Omitted from the final interface | Target, specification, identities, and endpoint already appear where they are configured or tested. |
+| Bottom tracker table | Tested endpoints and outcomes, then confirmed findings | Let engineers scan results and open detail. Only show rows backed by live audit data. |
 
-```css
-:root {
-  --canvas: #f7f7f4;
-  --surface: #ffffff;
-  --ink: #101010;
-  --muted-ink: #6f6f69;
-  --line: #deded8;
-  --line-strong: #b9b9b1;
-  --signal: #f23312;
-  --signal-deep: #ca260c;
-  --critical-wash: #fff0ec;
-  --warning: #d89000;
-  --warning-wash: #fff7df;
-  --success: #23694e;
-  --success-wash: #edf6ef;
-  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-```
+Do not add decorative search, alerts, charts, filters, or sharing controls without a working task behind them. The reference's balance is useful; its feature set is not SentinelAPI's feature set.
 
-- Use `--sans` for all product copy and `--mono` for endpoint methods, paths, IDs, scan states, timestamps, and reproduction requests.
-- Use black for normal hierarchy. Reserve `--signal` for the scan button, confirmed critical findings, and the most important scanner state.
-- Keep surfaces square or nearly square: `0–4px` corner radius. Borders should generally be `1px solid var(--line)`.
-- Use a subtle dotted or dashed line motif in a non-interactive background layer only. Keep its contrast low enough to meet text legibility and disable it in `prefers-reduced-motion` mode.
+## Page structure
 
-## App shell
+### App shell and setup
 
-### Desktop
+- Use a compact top bar with SentinelAPI, the **Local sandbox** marker, target host, and local API reference. Do not add a sidebar when every destination already appears in one short page.
+- Keep the current target and scan status near the page heading. A connection indicator is not proof that authorization is safe.
+- Keep setup limited to the **OpenAPI definition**, **Local API base URL**, and the primary scan action. Label the checked-in default document and any uploaded file accurately.
+- Explain the supported URL near its input: HTTP on `localhost`, `127.0.0.1`, or `::1` only. A rejected target needs a specific inline error and focus returned to the field.
+- Show User A and User B only in the live ownership evidence after the scan discovers their objects. Default order IDs `1001` and `1002` can explain the seeded demo; do not present them as discovered results for another target.
+- Place the scan action after the target and safety context. Keep bounded, read-only GET behavior visible near it.
+- Avoid a dashboard full of empty modules before the first scan. Setup is the primary content then.
 
-Use a full-width shell with a restrained top navigation bar instead of a heavy left sidebar.
+### Result overview
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│ SentinelAPI   Scanner / Overview          LOCAL SANDBOX  ● 127.0.0.1      │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  01 / AUTHORIZED API SECURITY                                             │
-│  Find broken object access before release.                   [Run scan]   │
-│  Two-user, specification-driven checks against a local demo.             │
-│                                                                           │
-│  [ OpenAPI definition ]  [ Base URL ]  [ Identity comparison ]            │
-│                                                                           │
-│  02 / SCAN RESULTS                                           3 confirmed  │
-│  [ Critical 1 ] [ High 1 ] [ Medium 1 ] [ Low 0 ]                         │
-│                                                                           │
-│  03 / CONFIRMED FINDINGS                                      JSON  MD    │
-│  CRITICAL  Broken object-level authorization       GET /orders/{id}      │
-│  Evidence, expected vs observed behaviour, and reproduction request       │
-└───────────────────────────────────────────────────────────────────────────┘
-```
+- Lead with a plain-language verdict: **Ready**, **Running**, **Completed with findings**, **Completed clean**, **Inconclusive**, or **Failed**.
+- Distinguish a completed clean scan from an incomplete scan. Zero confirmed findings does not mean every endpoint was tested successfully.
+- After a scan, show the actual target, tested endpoint, owner IDs, cross-user status, outcome, and confirmed finding count. Before values exist, show **Not yet tested**.
+- Do not add standalone severity cards when the finding list already labels each confirmed issue. The ownership verdict and evidence are the primary result.
 
-- Top bar: `64–72px` high, white or canvas background, a bottom border, and compact monospaced status information aligned right.
-- Keep the SentinelAPI wordmark text-only or use the existing `S` mark. Do not recreate Orderful's red symbol.
-- The main content column is `min(1320px, calc(100vw - 96px))`, with `48px` desktop gutters and `56–72px` vertical section separation.
-- Use a small numeric section index (`01`, `02`, `03`) plus uppercase mono label before each major area. The actual heading remains sentence case and large.
+### Ownership comparison
 
-### Mobile
+The main panel tells the causal story in this order:
 
-- Collapse the top navigation to the product name, scan status, and a compact menu only if additional destinations are added.
-- Preserve `Run scan` as a full-width primary action below the introductory copy.
-- Stack target fields, metrics, evidence columns, and download controls into one column.
-- Do not hide the local-sandbox warning, finding severity, endpoint, or reproduction action.
+1. **What was tested:** authenticated collection/detail `GET` discovered from the selected OpenAPI document.
+2. **Owner baselines:** User A's and User B's separate object IDs and successful owner responses.
+3. **Cross-user request:** User A requests User B's object ID.
+4. **Observed response:** actual HTTP status and whether returned JSON matched B's owner baseline.
+5. **Expected response:** HTTP 403 or 404 for a protected object.
+6. **Decision:** confirm BOLA only when the live cross-user response is HTTP 200 and matches B's object. Otherwise show the specific pass, inconclusive, or error reason.
 
-## Type and spacing
+Use a compact sequence or comparison grid with text labels and actual values. Do not imply a match the server did not establish. Keep detailed evidence accessible through disclosure controls without making the initial view a wall of JSON.
 
-- Hero heading: `clamp(2.25rem, 5vw, 5.5rem)`, weight `300–400`, tight letter spacing, line-height `0.94–1.02`.
-- Section headings: `1.35–1.8rem`, weight `500–600`.
-- Body: `0.95–1rem`, line-height `1.5–1.65`; descriptions should be plain English rather than security jargon.
-- Technical labels: `10–12px`, uppercase, mono, `0.08–0.12em` tracking.
-- Build spacing on an 8px scale: 8, 16, 24, 32, 48, 64, 80. Use a larger jump between major sections than between cards.
+### Findings and outcomes
 
-## Component direction
+- Order confirmed findings by severity. Each row/card has severity, title, method and endpoint, a plain-language evidence sentence, and **View evidence**.
+- Expanded detail contains **Expected**, **Observed**, **Why it matters**, **Fix**, and **Safe reproduction request**. Use the redacted report contract; never put tokens, passwords, or raw authorization headers into the page or clipboard.
+- Give excessive data exposure its own finding. Explain that sensitive fields in User A's own response are separate from the cross-user ownership flaw.
+- Show endpoint `pass`, `fail`, `inconclusive`, and `error` outcomes separately when audit data exists. Failed requests and malformed responses are never confirmed vulnerabilities.
+- Keep JSON and Markdown downloads near the result heading. Disable or omit them until a server-generated report exists. Do not add a prominent sharing action.
 
-### Primary action
+## Visual system
 
-- Use a rectangular `--signal` button with black or white label text chosen for contrast.
-- Label it **Run authorized scan** when space allows; preserve the short **Run scan** label on narrow screens.
-- Include a compact play/arrow glyph only as supporting detail. During scanning, show a textual state such as `Testing object ownership…`; never rely on a spinner alone.
+- **Canvas:** very light lavender-gray or neutral gray; white or near-white work surfaces.
+- **Surfaces:** subtle borders and modest corner rounding. Soft shadow may separate the workspace, but hierarchy must work without it.
+- **Ink:** near-black primary text and accessible medium-gray supporting text.
+- **Accent:** restrained indigo for selection and focus. Reserve deep red for confirmed Critical risk and amber/brown for High risk. Green or neutral clean/pass states always need text labels.
+- **Summary surfaces:** use gentle tints only where they clarify a real scan outcome. Do not add standalone summary tiles.
+- **Type:** local system sans-serif for copy and a local monospace stack for methods, paths, IDs, HTTP statuses, and commands. No remote fonts.
+- **Density:** generous space around setup and the main decision; tighter rows for endpoints and findings. Avoid oversized decorative headings.
+- **Icons:** simple local SVGs only when they clarify action or status. No avatars, stock photography, medical symbols, or animated background texture.
 
-### Scan target strip
+These are directional values, not exact sampled colors. Contrast, readable text, and clear state labels take priority over matching the screenshot precisely.
 
-- Present the OpenAPI file, base URL, and identity comparison as one bordered three-column strip on desktop.
-- Each item gets an uppercase mono label, a prominent value, and one useful supporting line.
-- Use `LOCAL ONLY` / `SANDBOX` as an outlined safety stamp, not a soft green success chip.
+## States and copy
 
-### Severity summary
+| State | Main message | Next step |
+| --- | --- | --- |
+| Ready | “Ready to test the selected local API.” | Review target and run scan. |
+| Running | “Testing object ownership…” | Wait; keep target context visible. |
+| Completed with findings | “User A received User B's order.” when live evidence confirms it | Read comparison and fix guidance; download report. |
+| Completed clean | “No confirmed findings in the completed checks.” | Review tested endpoints and the secure control if useful. |
+| Inconclusive | “The ownership comparison could not prove a result.” | Read the reason and correct or retry. |
+| Failed | “The scan could not finish.” | Show a safe, specific error and retry path. |
 
-- Keep four equal metric blocks. Use large numerical counts, a tiny severity label, and a thin bottom rule.
-- Critical uses `--signal`; high uses `--warning`; medium uses muted ochre; low uses neutral grey or restrained green.
-- An empty count should be `0`, never an em dash after a completed scan.
+Use **confirmed** only after a valid live comparison. Avoid “secure,” “all clear,” “autonomous attack,” and production-grade claims. This is a narrow local demonstration, not general API coverage.
 
-### Findings
+## Responsive and accessible behavior
 
-- Treat each finding as a wide bordered editorial row, not a dense card stack.
-- First line: severity, finding title, score, and verification state.
-- Second line: method and endpoint in mono, followed by a one-sentence explanation of impact.
-- Expanded evidence uses a two-column layout: **Expected** versus **Observed**. Place **Remediation** below them as a direct engineering action.
-- The reproduction command lives in a dark, high-contrast code block with a visibly labelled copy control. Clearly mark it as a test-only request.
-- Preserve the empty state, but make it reassuring: `No confirmed findings. The sandbox checks completed without an ownership violation.`
+- **Wide screens:** keep setup in one compact panel, followed by full-width ownership evidence, the endpoint result, and findings.
+- **Medium screens:** split setup into two columns while preserving its reading order.
+- **Small screens:** stack setup, ownership evidence, endpoint result, and findings. Controls must not require horizontal scrolling; long paths or commands may scroll within their own block.
+- Keep file selection, URL input, scan, evidence disclosures, copy, links, and downloads keyboard reachable in logical order. Use visible focus and descriptive labels.
+- Announce meaningful scan-state changes through a polite live region, not every internal request.
+- Meet WCAG AA contrast, pair color with text, use practical touch targets, and keep mobile input text at least 16px.
+- Limit motion to functional state changes and honor `prefers-reduced-motion`.
 
-### Connection-line motif
+## Implementation boundaries
 
-- Use an absolutely positioned SVG or CSS background in the hero/scan-target area: fine dashed lines linking small labelled nodes such as `SPEC`, `USER A`, `USER B`, `OBJECT ID`, and `EVIDENCE`.
-- Lines should be decorative and non-interactive. Keep all information represented in normal HTML too.
-- Use the signal colour only for the currently active node or confirmed evidence path. Avoid animated lines unless the scan is actively running; respect `prefers-reduced-motion`.
+- Keep scanner, authentication, bounded GET execution, comparison, redaction, and reporting policies intact unless separately requested.
+- Loopback-only enforcement, redirect blocking, timeouts, and size limits remain server-side.
+- Never hardcode findings, response statuses, endpoint outcomes, or downloaded reports for a demo.
+- Do not add remote assets, trackers, or services to recreate the image.
+- Clearly label the intentionally vulnerable target **local-only and unsafe for production**.
 
-## Content voice
+## Acceptance checks
 
-Use direct, understandable language.
-
-| Avoid | Prefer |
-| --- | --- |
-| "Leverage autonomous attack surfaces" | "Test whether one user can access another user's order." |
-| "Threat intelligence dashboard" | "Scan results" |
-| "Vulnerability detected" | "User A received User B's order." |
-| "Mitigation recommendation" | "Require an ownership check before returning the order." |
-
-Always say **confirmed** only when the comparison has actually run. Before a scan, use **ready to scan** or **not yet scanned**.
-
-## Interaction and accessibility
-
-- Visible keyboard focus: a `2px` ink or signal outline with at least `3px` offset.
-- Do not communicate severity by colour alone; pair it with text and a labelled status.
-- Meet WCAG AA contrast for all text, control states, and code blocks.
-- Buttons must retain their labels while loading and disabled states must explain why when relevant.
-- `<details>` evidence sections must have descriptive summaries, be keyboard operable, and remain usable without animation.
-- Use `aria-live="polite"` for scan progress and result count updates. Do not announce every request log line.
-
-## Implementation guardrails
-
-- Reuse the existing local-only scanner workflow and its report data. This is a visual/content refactor, not a change to scanning behaviour or authorization testing.
-- Keep user-provided OpenAPI file selection, JSON/Markdown report download, exact endpoints, and proof-of-concept commands intact.
-- Do not expose demo credentials or tokens more prominently than the existing controlled-demo documentation requires.
-- Do not add third-party fonts, trackers, images, or remote assets merely to imitate the reference. The technical motif should be built locally with CSS/SVG.
-- Do not call the demo API "production-ready" or imply that SentinelAPI may scan unapproved systems.
-
-## Acceptance checklist
-
-- [ ] The first screen clearly says this is an authorized local sandbox.
-- [ ] One high-contrast action starts the scan, and scan progress uses human-readable text.
-- [ ] The two-user access comparison is visually understandable before results load.
-- [ ] Confirmed findings make severity, endpoint, evidence, expected behaviour, observed behaviour, remediation, and reproduction easy to locate.
-- [ ] The UI feels sparse, exact, and technical at desktop and mobile sizes.
-- [ ] No Orderful trademarks, copy, logo, or proprietary artwork appear in the product.
+- A first-time user can identify the target, specification, two-user test, and next action without repository documentation.
+- Running and final states are distinct, especially clean versus inconclusive.
+- The live ownership comparison is understandable before opening raw details.
+- BOLA and excessive exposure each show specific evidence, expected behavior, and a fix.
+- Secure 403/404 produces no BOLA finding; mismatched or malformed HTTP 200 is not called confirmed.
+- Reports and copied requests are redacted and available only when generated.
+- The layout works with keyboard, screen reader, mobile width, and reduced motion.
