@@ -1,7 +1,10 @@
 import json
+import io
+import logging
 import traceback
 import unittest
 from copy import deepcopy
+from unittest.mock import patch
 
 import httpx
 from fastapi.testclient import TestClient
@@ -13,6 +16,7 @@ from scanner.redaction import redact_value
 from scanner.report_generator import build_report, markdown_report
 from scanner.models import Finding
 from scanner.reproduction import build_curl
+from scanner.structured_logging import JsonFormatter, log_event
 
 
 BASE_SPEC = {
@@ -56,6 +60,24 @@ def successful_handler(request: httpx.Request) -> httpx.Response:
 
 
 class OpenApiSafetyTests(unittest.TestCase):
+    def test_scan_route_uses_submitted_local_base_url(self):
+        report = build_report([], "Custom local target")
+        report.update({"tested_endpoints": [], "scan_status": "completed", "result": "clean"})
+
+        with patch("app.main.scan", return_value=report) as scan_mock, patch("app.main.write_reports"):
+            with TestClient(app) as client:
+                response = client.post("/api/scan", json={"base_url": "http://localhost:9000"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(scan_mock.call_args.kwargs["base_url"], "http://localhost:9000")
+
+    def test_scan_route_rejects_external_base_url(self):
+        with TestClient(app) as client:
+            response = client.post("/api/scan", json={"base_url": "https://example.com"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("local HTTP origin", response.json()["detail"])
+
     def test_invalid_unsupported_and_missing_openapi_fields_are_clear(self):
         cases = [
             ("paths: [", "Invalid OpenAPI document"),
@@ -202,6 +224,32 @@ class RedactionSafetyTests(unittest.TestCase):
         safe = redact_value(original)
         self.assertEqual(original["password"], "password-value")
         self.assertEqual(safe["password"], "<REDACTED>")
+
+    def test_structured_logs_exclude_credentials_and_tokens(self):
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(JsonFormatter())
+        logger = logging.getLogger("sentinelapi.test")
+        logger.handlers = [handler]
+        logger.propagate = False
+        logger.setLevel(logging.INFO)
+
+        log_event(
+            logger,
+            "authentication_failed",
+            secrets=("password-a-secret", "raw-token-value"),
+            password="password-a-secret",
+            authorization="Bearer raw-token-value",
+            detail="Login rejected for password-a-secret",
+        )
+
+        rendered = stream.getvalue()
+        payload = json.loads(rendered)
+        self.assertEqual(payload["event"], "authentication_failed")
+        self.assertEqual(payload["password"], "<REDACTED>")
+        self.assertEqual(payload["authorization"], "Bearer <REDACTED>")
+        self.assertNotIn("password-a-secret", rendered)
+        self.assertNotIn("raw-token-value", rendered)
 
 
 if __name__ == "__main__":

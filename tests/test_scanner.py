@@ -1,15 +1,27 @@
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
 from scanner.checks import check_excessive_data_exposure, check_rate_limit_observation
 from scanner.reproduction import build_curl
-from scanner.report_generator import build_report, markdown_report
+from scanner.report_generator import REPORT_SCHEMA_VERSION, build_report, markdown_report, write_reports
 
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 class ScannerModuleTests(unittest.TestCase):
+    def test_json_report_includes_schema_version(self):
+        report = build_report([], "secure target")
+
+        self.assertEqual(report["version"], REPORT_SCHEMA_VERSION)
+        with tempfile.TemporaryDirectory() as output_dir:
+            json_path, _ = write_reports(report, output_dir)
+            serialized_report = json.loads(json_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(serialized_report["version"], REPORT_SCHEMA_VERSION)
+
     def test_data_exposure_flags_internal_fields(self):
         findings = check_excessive_data_exposure(
             endpoint="/orders/1002",
@@ -58,6 +70,13 @@ class ScannerModuleTests(unittest.TestCase):
         self.assertIn("**Scan status:** Completed", markdown)
         self.assertIn("**Result:** Clean", markdown)
         self.assertIn("completed successfully with no confirmed findings", markdown)
+
+    def test_markdown_report_lists_endpoint_outcomes_separately(self):
+        report = build_report([], "secure target")
+        report["outcome_counts"] = {"pass": 2, "fail": 1, "inconclusive": 3, "error": 4}
+        markdown = markdown_report(report)
+        self.assertIn("## Endpoint outcomes", markdown)
+        self.assertIn("| 2 | 1 | 3 | 4 |", markdown)
 
     def test_dashboard_renders_clean_scan_as_complete(self):
         dashboard_script = (ROOT / "app" / "static" / "app.js").read_text(encoding="utf-8")

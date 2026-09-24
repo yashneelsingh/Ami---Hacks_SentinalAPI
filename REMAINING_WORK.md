@@ -53,7 +53,7 @@
 
 - [x] Verify that access tokens and passwords never appear in reports, UI output, exception messages, logs, or test snapshots.
 - [x] Add automated redaction tests for bearer headers and authentication failures.
-- [ ] Confirm that the SQLite database, virtual environment, temporary review files, and local test artifacts are excluded from version control.
+- [x] Confirm that the SQLite database, virtual environment, temporary review files, and local test artifacts are excluded from version control.
 - [x] Keep the external target restriction enabled for the MVP.
 - [x] Verify that uploaded specifications are size-limited and never executed as code.
 
@@ -70,12 +70,12 @@
 
 ### P1 Maintainability after P0
 
-- [ ] Separate authentication, request execution, comparison, and reporting behind typed interfaces.
-- [ ] Add a version field to the JSON report schema.
-- [ ] Record pass, fail, inconclusive, and error outcomes separately.
-- [ ] Add structured logging that excludes credentials and tokens.
-- [ ] Add a continuous integration command that seeds the database and runs the full test suite.
-- [ ] Document supported OpenAPI shapes and explicit MVP limitations in the README.
+- [x] Separate authentication, request execution, comparison, and reporting behind typed interfaces.
+- [x] Add a version field to the JSON report schema.
+- [x] Record pass, fail, inconclusive, and error outcomes separately.
+- [x] Add structured logging that excludes credentials and tokens.
+- [x] Add a continuous integration command that seeds the database and runs the full test suite.
+- [x] Document supported OpenAPI shapes and explicit MVP limitations in the README.
 
 ## Required acceptance tests
 

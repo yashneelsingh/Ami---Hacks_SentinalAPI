@@ -1,0 +1,619 @@
+SENTINELAPI LIVE API SCANNING ROADMAP
+
+Goal
+====
+
+Build a deployable website where a user can submit an authorized live API,
+provide its OpenAPI definition and authentication details, run a bounded
+read-only security scan, and receive clear findings and downloadable reports.
+
+The phrase "random API" must mean an API that the user owns or has explicit
+permission to test. The website must not become an unrestricted proxy or a
+tool for scanning unrelated third-party systems.
+
+
+Current State
+=============
+
+The current MVP can:
+
+- Parse OpenAPI 3.x YAML or JSON.
+- Discover authenticated GET collection and object-detail endpoints.
+- Authenticate two fixed demo users through POST /auth/login.
+- Test for BOLA using two users with separately owned objects.
+- Detect selected excessive-data-exposure fields.
+- Produce JSON and Markdown reports with redacted reproduction requests.
+- Enforce timeouts, response-size limits, endpoint limits, and redirect blocking.
+
+The current MVP cannot scan a general live API because:
+
+- External hosts are rejected.
+- Login endpoint, credentials, request body, token field, and bearer scheme are
+  fixed for the demo API.
+- The scanner expects a collection response containing a JSON array whose first
+  item contains an id field.
+- Only a narrow OpenAPI endpoint shape is supported.
+- The server has no safe per-user secret storage or scan-job isolation.
+- The application is designed as a local MVP, not as an internet-facing service.
+
+
+Target User Flow
+================
+
+1. User opens the SentinelAPI website.
+2. User accepts an authorization statement confirming permission to test the API.
+3. User enters the HTTPS API base URL.
+4. User supplies the OpenAPI document by one of these methods:
+   - Upload YAML or JSON.
+   - Paste an OpenAPI URL.
+   - Try standard locations such as /openapi.json only after confirmation.
+5. The website validates the target and shows a connection preview.
+6. User chooses an authentication profile.
+7. User enters two low-privilege test identities.
+8. SentinelAPI verifies that both users can authenticate.
+9. SentinelAPI discovers compatible read-only endpoints and shows what it plans
+   to request.
+10. User starts the scan.
+11. The server runs bounded GET requests only.
+12. The website shows pass, fail, inconclusive, and error outcomes separately.
+13. User downloads redacted JSON and Markdown reports.
+14. Credentials and tokens are deleted from memory when the scan finishes.
+
+
+Phase 1 - Define the Supported Live API Contract
+================================================
+
+[ ] Document the first supported live API profile.
+
+Minimum supported profile:
+
+- HTTPS API origin.
+- OpenAPI 3.0 or 3.1 document.
+- JSON request and response bodies.
+- Token-based authentication.
+- Two test users.
+- A collection GET endpoint.
+- A detail GET endpoint containing one path identifier.
+- Each user owns at least one different object.
+
+[ ] Clearly document what is not supported in the first release:
+
+- APIs without explicit authorization to test.
+- Browser-cookie login requiring interactive MFA or CAPTCHA.
+- OAuth consent flows requiring human browser interaction.
+- Write-operation testing.
+- GraphQL unless separately implemented.
+- SOAP.
+- WebSocket-only APIs.
+- APIs without two test identities for BOLA checks.
+- APIs without a usable OpenAPI document, until live-traffic discovery exists.
+
+[ ] Define compatibility outcomes shown before scanning:
+
+- Compatible: all required information is available.
+- Partially compatible: some checks can run, but BOLA cannot be verified.
+- Incompatible: authentication or endpoint shape is unsupported.
+
+
+Phase 2 - Safe External Target Validation
+=========================================
+
+[ ] Replace the localhost-only validator with a dedicated TargetPolicy service.
+
+[ ] Continue supporting localhost for development.
+
+[ ] Require HTTPS for external targets.
+
+[ ] Normalize and validate the URL:
+
+- Allow only an origin: scheme, hostname, and optional port.
+- Reject usernames and passwords embedded in URLs.
+- Reject paths, query strings, fragments, and malformed ports.
+- Convert internationalized hostnames safely.
+- Apply a maximum URL length.
+
+[ ] Resolve the hostname before any request.
+
+[ ] Reject every resolved address in these ranges:
+
+- Loopback, unless local development mode is enabled.
+- Private networks.
+- Link-local networks.
+- Multicast and reserved ranges.
+- Cloud metadata addresses.
+- Unspecified addresses.
+
+[ ] Protect against DNS rebinding:
+
+- Resolve and validate immediately before connecting.
+- Revalidate when a new connection is made.
+- Do not follow redirects.
+- Reject responses that attempt to redirect to another host.
+
+[ ] Add a deployment-level allowlist mode:
+
+- Demo mode: only exact evaluator-provided hostnames.
+- Controlled beta mode: approved customer hostnames.
+- Never ship an unrestricted internal-network request proxy.
+
+[ ] Permit only explicitly configured ports, initially 443.
+
+[ ] Add automated tests for encoded IPs, IPv6, DNS rebinding simulations,
+redirects, userinfo URLs, private addresses, metadata addresses, and invalid URLs.
+
+
+Phase 3 - OpenAPI Input and Validation
+======================================
+
+[ ] Keep file upload for YAML and JSON specifications.
+
+[ ] Add an OpenAPI URL field.
+
+[ ] Fetch an OpenAPI URL only after applying the same target safety policy.
+
+[ ] Require the specification URL to use the approved target hostname unless the
+user explicitly supplies another approved documentation hostname.
+
+[ ] Support standard discovery locations as an optional helper:
+
+- /openapi.json
+- /openapi.yaml
+- /swagger.json
+
+[ ] Never execute uploaded YAML tags or document content.
+
+[ ] Retain and test specification-size limits.
+
+[ ] Validate the OpenAPI version, paths object, operations, parameters, security
+declarations, and server information.
+
+[ ] Show validation errors before requesting the target API.
+
+[ ] Add support for local component references inside the same OpenAPI document.
+
+[ ] Treat remote $ref resolution as unsupported initially, or fetch it only
+through the same strict target policy and size limits.
+
+[ ] Allow the user to override the OpenAPI servers value with the approved base
+URL. Do not silently scan a server named in an uploaded document.
+
+
+Phase 4 - Configurable Authentication Profiles
+==============================================
+
+[ ] Replace fixed Credentials and _login behavior with typed interfaces.
+
+Suggested interfaces:
+
+- AuthenticationProfile
+- IdentityCredentials
+- TokenExtractor
+- AuthorizationInjector
+- RequestExecutor
+
+[ ] Implement the first authentication profile: JSON login returning a token.
+
+Configuration fields:
+
+- Login path.
+- HTTP method, initially POST only.
+- Content type.
+- Username or email field name.
+- Password field name.
+- Optional fixed non-secret login fields.
+- Token JSON path, for example access_token or data.token.
+- Authorization header name.
+- Authorization scheme, for example Bearer.
+
+[ ] Add an API-key profile:
+
+- Header name.
+- Header value for User A and User B.
+- Never include the actual values in reports or logs.
+
+[ ] Consider OAuth client-credentials only after the basic profiles work.
+
+[ ] Do not implement password, token, cookie, or API-key persistence by default.
+
+[ ] Hold secrets only for the duration of the scan.
+
+[ ] Prevent secrets from appearing in:
+
+- Application logs.
+- Exceptions.
+- Browser-visible error messages.
+- Reports.
+- Reproduction requests.
+- Analytics.
+- Test snapshots.
+
+[ ] Add a Test authentication button that verifies both identities without
+starting the vulnerability scan.
+
+[ ] Return clear results for User A and User B separately.
+
+
+Phase 5 - Endpoint Discovery and Object Mapping
+===============================================
+
+[ ] Refactor endpoint discovery into a typed DiscoveryResult.
+
+[ ] Support these common collection response shapes:
+
+- A raw JSON array.
+- An object containing data, items, results, or records arrays.
+
+[ ] Let the user select the collection-array JSON path when automatic detection
+is ambiguous.
+
+[ ] Let the user select the object identifier field, such as id, uuid, order_id,
+or a documented schema property.
+
+[ ] Support path parameters whose names are not exactly id.
+
+[ ] Show the discovered collection and detail endpoints before scanning.
+
+[ ] Let the user enable or disable individual endpoint pairs.
+
+[ ] Require User A and User B to expose different object identifiers before a
+BOLA test can be conclusive.
+
+[ ] Record why an endpoint is skipped, incompatible, inconclusive, or failed.
+
+[ ] Keep the number of scanned endpoint pairs bounded.
+
+
+Phase 6 - Generalize the Scan Engine
+====================================
+
+[ ] Separate these components behind typed interfaces:
+
+- Target validation.
+- Authentication.
+- Request execution.
+- Response parsing.
+- Endpoint discovery.
+- Ownership comparison.
+- Finding generation.
+- Report generation.
+
+[ ] Create a ScanConfiguration model containing only validated settings.
+
+[ ] Create explicit outcome types:
+
+- Pass.
+- Finding.
+- Inconclusive.
+- Error.
+- Skipped.
+
+[ ] Keep the first live scanning mode read-only.
+
+[ ] Permit GET and authentication POST requests only.
+
+[ ] Never automatically execute PUT, PATCH, DELETE, or business-action POST
+operations from an uploaded specification.
+
+[ ] Maintain strict limits:
+
+- Connection and read timeout.
+- Maximum response body.
+- Maximum endpoint count.
+- Maximum requests per scan.
+- Maximum scan duration.
+- Maximum concurrent requests.
+- Per-target delay or rate limit.
+
+[ ] Set a descriptive User-Agent containing project and contact information.
+
+[ ] Stop scanning if the target returns repeated 429 or 5xx responses.
+
+[ ] Add a cancel-scan operation.
+
+[ ] Ensure partial failures do not become false vulnerability findings.
+
+
+Phase 7 - Website Experience
+============================
+
+[ ] Replace the single compact target strip with a guided scan form.
+
+Recommended steps:
+
+- Step 1: Authorization confirmation.
+- Step 2: API base URL.
+- Step 3: OpenAPI source.
+- Step 4: Authentication profile.
+- Step 5: User A and User B test credentials.
+- Step 6: Discovered endpoints and planned requests.
+- Step 7: Run scan and view results.
+
+[ ] Add an authorization checkbox with clear language:
+
+"I confirm that I own this API or have explicit permission to test it."
+
+[ ] Disable scanning until the authorization confirmation is selected.
+
+[ ] Never claim that checking the box legally proves authorization. Record it as
+a product safety acknowledgement only.
+
+[ ] Mask password, token, and API-key fields.
+
+[ ] Add show/hide controls that default to hidden.
+
+[ ] Do not store credentials in localStorage, sessionStorage, analytics, or URLs.
+
+[ ] Add progress stages:
+
+- Validating target.
+- Validating specification.
+- Authenticating users.
+- Discovering objects.
+- Testing ownership.
+- Generating report.
+
+[ ] Present compatibility warnings before scan execution.
+
+[ ] Clearly separate findings from inconclusive tests and operational errors.
+
+[ ] Add a scan summary containing target hostname, test time, endpoint count,
+request count, duration, and safety limits used.
+
+[ ] Keep report downloads disabled until report generation succeeds.
+
+[ ] Verify desktop, tablet, and mobile layouts.
+
+
+Phase 8 - Server Architecture for a Public Website
+==================================================
+
+[ ] Move long-running scans out of the request-response handler into bounded jobs.
+
+[ ] Assign an unpredictable scan ID.
+
+[ ] Isolate every scan's configuration, credentials, logs, and report.
+
+[ ] Add job states: queued, validating, running, completed, failed, cancelled,
+and expired.
+
+[ ] Add authenticated access to scan results if results are stored.
+
+[ ] Prefer short-lived reports and automatic deletion.
+
+[ ] Add per-user and per-IP rate limits.
+
+[ ] Add a global concurrency limit.
+
+[ ] Add CSRF protection where cookie authentication is used.
+
+[ ] Configure strict CORS instead of allowing every origin.
+
+[ ] Add security headers and a restrictive Content Security Policy.
+
+[ ] Remove third-party runtime assets from critical UI paths or self-host them.
+
+[ ] Run the service as a non-privileged operating-system user.
+
+[ ] Prevent the scanner worker from accessing deployment metadata and internal
+networks at the firewall or container-network level, not only in application code.
+
+[ ] Store deployment secrets in a secret manager or protected environment
+configuration, never in the repository.
+
+
+Phase 9 - Logging, Privacy, and Reports
+=======================================
+
+[ ] Add structured logging with a redaction filter.
+
+[ ] Log scan lifecycle and safe metadata only:
+
+- Scan ID.
+- Approved hostname.
+- Stage and outcome.
+- Status code classes.
+- Timing.
+- Bounded request counts.
+
+[ ] Never log request Authorization headers, login bodies, full response bodies,
+passwords, tokens, cookies, or API keys.
+
+[ ] Add a versioned JSON report schema.
+
+[ ] Include pass, finding, inconclusive, error, and skipped counts.
+
+[ ] Include only redacted reproduction requests.
+
+[ ] Add a report retention setting and automatic cleanup job.
+
+[ ] Add a privacy notice explaining what is temporarily processed and retained.
+
+
+Phase 10 - Automated Testing
+============================
+
+[ ] Keep all existing local MVP tests passing.
+
+[ ] Add target-policy unit tests.
+
+[ ] Add authentication-profile unit tests.
+
+[ ] Add endpoint-mapping unit tests for several JSON shapes.
+
+[ ] Add end-to-end tests against controlled external-style test servers.
+
+[ ] Test a vulnerable target that produces one confirmed BOLA finding.
+
+[ ] Test 403 and 404 secure controls.
+
+[ ] Test mismatched HTTP 200 responses.
+
+[ ] Test identical user object IDs as inconclusive.
+
+[ ] Test invalid specifications and unsupported auth profiles.
+
+[ ] Test connection refusal, TLS errors, timeouts, redirects, DNS changes, 429,
+5xx, oversized responses, and partial endpoint failures.
+
+[ ] Test that secrets never appear in logs, reports, errors, or browser output.
+
+[ ] Test cancellation and scan expiration.
+
+[ ] Test rate limits and concurrency limits.
+
+[ ] Add browser tests for the complete guided form and report downloads.
+
+
+Phase 11 - Controlled Real-World Validation
+===========================================
+
+[ ] Deploy a dedicated internet-accessible staging API owned by the team.
+
+[ ] Create two test identities and different objects.
+
+[ ] Provide both secure and deliberately vulnerable endpoint modes.
+
+[ ] Add the staging hostname to the exact-host allowlist.
+
+[ ] Run SentinelAPI from the deployed website against that staging API.
+
+[ ] Confirm the vulnerable mode produces the expected finding.
+
+[ ] Confirm the secure mode produces a pass and no BOLA finding.
+
+[ ] Verify request counts and target health during the scan.
+
+[ ] Review logs and reports for secret leakage.
+
+[ ] Ask an independent teammate to complete the flow using only the UI and README.
+
+[ ] Do not open scanning to broader targets until this controlled test passes.
+
+
+Phase 12 - Deployment and Operations
+====================================
+
+[ ] Containerize the web application and scanner worker.
+
+[ ] Separate the public web process from the network-enabled scanner worker.
+
+[ ] Configure outbound firewall restrictions for the worker.
+
+[ ] Use HTTPS for the website.
+
+[ ] Add health and readiness checks that reveal no secrets.
+
+[ ] Add monitoring for errors, scan duration, request volume, and repeated target
+failures without collecting API credentials.
+
+[ ] Add dependency and container-image security scanning.
+
+[ ] Add CI that seeds the test database and runs the full test suite.
+
+[ ] Add a deployment rollback procedure.
+
+[ ] Add an abuse-response procedure for reported unauthorized scanning.
+
+
+Recommended Implementation Order
+================================
+
+1. Define the supported live API contract.
+2. Implement TargetPolicy and SSRF protections.
+3. Add safe OpenAPI URL fetching.
+4. Refactor authentication behind typed profiles.
+5. Implement JSON token login and API-key profiles.
+6. Generalize collection and identifier mapping.
+7. Refactor scan outcomes and job configuration.
+8. Build the guided website form.
+9. Add structured redacted logging and report retention.
+10. Add complete automated safety and browser coverage.
+11. Validate against the team's controlled external staging API.
+12. Deploy with worker-level outbound network restrictions.
+13. Allow evaluator-provided hosts through an exact-host configuration.
+
+
+Minimum Evaluator-Ready Version
+===============================
+
+For the hackathon, the smallest credible external-scanning version should have:
+
+- One externally hosted staging API owned by the team.
+- An exact hostname allowlist.
+- HTTPS-only external requests.
+- OpenAPI file upload and OpenAPI URL input.
+- Configurable JSON login endpoint and token field.
+- Two user credential forms.
+- Raw-array and data/items/results collection support.
+- Configurable identifier field.
+- GET-only BOLA and excessive-data-exposure checks.
+- Clear pass, finding, inconclusive, and error results.
+- Redacted JSON and Markdown reports.
+- Request, response-size, endpoint, timeout, and rate limits.
+- Full automated tests and a complete Chrome demonstration.
+- The existing local sandbox as a guaranteed fallback demonstration.
+
+
+Evaluator Demo Procedure
+========================
+
+Before the event:
+
+1. Ask for the evaluator API hostname, OpenAPI document, authentication format,
+two test identities, and explicit permission.
+2. Add the hostname to the deployment allowlist.
+3. Verify authentication with the test identities.
+4. Verify each identity owns a different test object.
+5. Run a dry scan and confirm request limits.
+
+During the demo:
+
+1. Show the authorization confirmation.
+2. Enter the evaluator-provided HTTPS API base URL.
+3. Upload or fetch the OpenAPI specification.
+4. Select and configure authentication.
+5. Enter User A and User B test credentials.
+6. Show the discovered endpoint pairs and request plan.
+7. Run the scan.
+8. Explain findings, inconclusive checks, and errors separately.
+9. Expand the evidence and redacted reproduction request.
+10. Download the JSON and Markdown reports.
+11. If their API is incompatible, explain the specific unsupported requirement
+and demonstrate the complete flow against the controlled team staging API.
+
+
+Definition of Done
+==================
+
+The live API goal is complete only when:
+
+[ ] A user can submit an authorized HTTPS API origin.
+[ ] The target passes strict SSRF and hostname policy checks.
+[ ] The user can upload or safely fetch an OpenAPI 3.x document.
+[ ] The user can configure authentication without code changes.
+[ ] Two test identities can authenticate independently.
+[ ] The scanner can map separately owned objects for those identities.
+[ ] All requests remain bounded and read-only.
+[ ] Secure cross-user access returns a pass.
+[ ] Confirmed cross-user access returns a BOLA finding.
+[ ] Unsupported or ambiguous behavior is marked inconclusive, not vulnerable.
+[ ] Operational failures are shown as errors, not findings.
+[ ] Reports contain accurate evidence and no credentials or tokens.
+[ ] The website works at desktop and mobile widths.
+[ ] Automated security, scanner, API, and browser tests pass.
+[ ] The deployed scanner cannot reach private infrastructure or metadata services.
+[ ] A complete scan succeeds against a controlled externally hosted staging API.
+[ ] The local sandbox remains available as a reliable fallback demo.
+
+
+Critical Product Decision
+=========================
+
+Do not promise that SentinelAPI can scan every API from only a URL. Real APIs
+use different authentication schemes, response shapes, identifiers, and business
+rules. The honest product promise for the first release should be:
+
+"Scan an authorized OpenAPI 3.x JSON API using supported authentication and
+two controlled test identities, with bounded read-only requests."
+
+Expand compatibility one verified authentication and response profile at a time.

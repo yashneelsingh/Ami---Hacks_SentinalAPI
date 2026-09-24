@@ -5,6 +5,7 @@ const stateLabel = document.getElementById("scan-state");
 const jsonButton = document.getElementById("download-json");
 const mdButton = document.getElementById("download-md");
 const specFile = document.getElementById("spec-file");
+const baseUrlInput = document.getElementById("base-url-input");
 let lastResult = null;
 
 function renderIcons(root = document) {
@@ -15,7 +16,7 @@ function renderIcons(root = document) {
   });
 }
 
-document.getElementById("base-url").textContent = location.origin;
+baseUrlInput.value = location.origin;
 
 specFile.addEventListener("change", () => {
   document.getElementById("spec-name").textContent = specFile.files[0]?.name || "openapi.yaml";
@@ -149,7 +150,13 @@ runButton.addEventListener("click", async () => {
   setScanState("TESTING OBJECT OWNERSHIP…", "running");
   errorBox.hidden = true;
   try {
-    const body = specFile.files[0] ? { spec: await specFile.files[0].text() } : {};
+    const baseUrl = baseUrlInput.value.trim();
+    if (!baseUrl) {
+      baseUrlInput.focus();
+      throw new Error("Enter a local API base URL before running the scan.");
+    }
+    const body = { base_url: baseUrl };
+    if (specFile.files[0]) body.spec = await specFile.files[0].text();
     const response = await fetch("/api/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

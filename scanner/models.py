@@ -3,7 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Literal
+
+
+Outcome = Literal["pass", "fail", "inconclusive", "error"]
+
+
+@dataclass(frozen=True)
+class Credentials:
+    email: str
+    password: str
+
+
+@dataclass(frozen=True)
+class BoundedResponse:
+    status_code: int
+    content: bytes
+
+
+@dataclass(frozen=True)
+class ComparisonResult:
+    outcome: Outcome
+    reason: str
+    confirmed_bola: bool
 
 
 @dataclass
@@ -25,4 +47,3 @@ class Finding:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-

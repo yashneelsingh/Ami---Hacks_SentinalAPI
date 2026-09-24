@@ -12,9 +12,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.database import database_session, ensure_database
-from scanner.core import Credentials, scan
+from scanner.core import Credentials, ScanError, scan
 from scanner.openapi_parser import MAX_SPEC_BYTES
 from scanner.report_generator import markdown_report, write_reports
+from scanner.structured_logging import configure_logging, log_event
 
 
 TOKENS = {
@@ -22,6 +23,7 @@ TOKENS = {
     "demo-token-user-b": {"id": 2, "email": "user-b@example.test", "role": "customer"},
 }
 bearer_scheme = HTTPBearer(auto_error=False)
+logger = configure_logging()
 
 
 class LoginRequest(BaseModel):
@@ -40,6 +42,7 @@ class OrderUpdate(BaseModel):
 
 class ScanRequest(BaseModel):
     spec: str | None = None
+    base_url: str | None = Field(default=None, min_length=1, max_length=2048)
 
 
 def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)] = None) -> dict:
@@ -83,13 +86,18 @@ def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
     try:
         report = scan(
             spec=spec,
-            base_url=str(request.base_url),
+            base_url=options.base_url.strip() if options and options.base_url else str(request.base_url),
             user_a=Credentials("user-a@example.test", "demo-password-a"),
             user_b=Credentials("user-b@example.test", "demo-password-b"),
         )
+    except ScanError as exc:
+        log_event(logger, "scan_request_rejected", level=30, error_type=type(exc).__name__)
+        raise HTTPException(status_code=400, detail=str(exc)) from None
     except (ValueError, httpx.HTTPError) as exc:
+        log_event(logger, "scan_request_failed", level=40, error_type=type(exc).__name__)
         raise HTTPException(status_code=502, detail=str(exc)) from None
     write_reports(report, ROOT / "reports")
+    log_event(logger, "scan_report_written", formats=["json", "markdown"])
     return {"report": report, "markdown": markdown_report(report)}
 
 

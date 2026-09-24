@@ -52,7 +52,7 @@
       <div class="hero-grid">
         <div class="hero-copy">
           <h1 id="page-title">Find broken object access before release.</h1>
-          <p>Test whether one authenticated user can access another user's order using an OpenAPI definition and controlled local data.</p>
+          <p>Paste a local API base URL, provide its OpenAPI definition, and test whether one authenticated user can access another user's order.</p>
         </div>
         <div class="hero-action">
           <span class="safety-stamp">LOCAL ONLY / SANDBOX</span>
@@ -72,9 +72,12 @@
           <p class="target-links"><label class="spec-picker"><i data-lucide="file-up" aria-hidden="true"></i>Choose OpenAPI file<input id="spec-file" type="file" accept=".yaml,.yml,.json,application/json,text/yaml"></label><a href="/openapi.json" target="_blank" rel="noopener">View live spec<i data-lucide="external-link" aria-hidden="true"></i></a></p>
         </div>
         <div class="target-item">
-          <span class="technical-label">BASE URL</span>
-          <strong id="base-url">http://127.0.0.1:8000</strong>
-          <p>Loopback target; external hosts are rejected.</p>
+          <label class="technical-label" for="base-url-input">LOCAL API BASE URL</label>
+          <div class="url-input-wrap">
+            <i data-lucide="link" aria-hidden="true"></i>
+            <input id="base-url-input" type="url" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000" spellcheck="false" autocomplete="url" required>
+          </div>
+          <p>Enter the API origin only. Localhost and loopback targets are supported; external hosts are rejected.</p>
         </div>
         <div class="target-item identity-item">
           <span class="technical-label">IDENTITY COMPARISON</span>

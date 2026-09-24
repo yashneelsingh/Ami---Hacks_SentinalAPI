@@ -12,7 +12,7 @@ python -m app.seed
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/` for the V0 scanner UI. Click **Run scan** to parse the checked-in OpenAPI document, log in as both seeded users, discover their order IDs from `GET /orders`, and test User A's access to User B's order. You can also choose a local OpenAPI 3.x YAML or JSON file in the UI; scans still target the local sandbox using the two seeded identities.
+Open `http://127.0.0.1:8000/` for the V0 scanner UI. Enter the local API base URL, optionally choose its OpenAPI 3.x YAML or JSON file, then click **Run authorized scan**. The default uses the checked-in OpenAPI document and current local server. The scanner logs in as both seeded users, discovers their order IDs from `GET /orders`, and tests User A's access to User B's order. Only `http://localhost`, `http://127.0.0.1`, and `http://[::1]` origins are accepted.
 
 The live API definition is at `http://127.0.0.1:8000/openapi.json`; the checked-in copy is [`openapi.yaml`](openapi.yaml). Swagger UI is at `http://127.0.0.1:8000/docs`.
 
@@ -33,6 +33,55 @@ Tokens returned by login are deterministic demo tokens. They are not authenticat
 - `PATCH /orders/{order_id}`
 - `GET /profile`
 - `GET /health`
+
+## Supported OpenAPI shape
+
+The scanner accepts YAML or JSON documents whose root contains an OpenAPI `3.x`
+version string and a `paths` object. This is targeted endpoint discovery, not a
+complete OpenAPI validator. A discoverable object endpoint must have this shape:
+
+```yaml
+openapi: 3.1.0
+paths:
+  /orders:
+    get: {}
+  /orders/{order_id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: order_id
+          in: path
+```
+
+The detail route must end in one path-parameter segment, have a matching
+collection route with `GET`, and declare the matching path parameter either on
+the path item or the detail `GET`. Authentication must be declared by a non-empty
+`security` value on the detail `GET` or at the document root. The scanner can
+discover at most three matching detail endpoints per scan.
+
+At runtime, the collection `GET` must return HTTP 200 and a non-empty JSON array;
+the first item must be an object with an `id` field. Each owner detail `GET` must
+return HTTP 200 JSON. A BOLA finding is confirmed only when User A's request for
+User B's ID returns HTTP 200 with the same JSON object returned to User B.
+
+## MVP limitations
+
+- Scans only an HTTP origin on `localhost`, `127.0.0.1`, or `::1`. The OpenAPI
+  `servers` value does not select the target.
+- Uses the two fixed demo identities, logs in through `POST /auth/login`, expects
+  an `access_token` in the JSON response, and sends it as a bearer token. Other
+  authentication flows and token refresh are not supported.
+- Tests only discovered collection and detail `GET` operations. It does not test
+  `POST`, `PUT`, `PATCH`, or `DELETE`, follow pagination, or execute multi-step
+  workflows.
+- Does not resolve `$ref` entries or support nested-resource templates,
+  multiple identifiers, query/header/cookie identifiers, or schema-driven ID
+  extraction. It inspects only the first collection item and its `id` field.
+- Accepts UI-uploaded specifications up to 250,000 bytes, scans at most three
+  discovered endpoints, limits each response to 1,000,000 bytes, uses a
+  five-second request timeout, and blocks redirects.
+- OpenAPI 2.x/Swagger documents, external targets, rate-limit testing, scan
+  history, and production or multi-tenant use are outside this local MVP.
 
 ## Seeded vulnerabilities
 
@@ -77,5 +126,20 @@ python -m unittest discover -s tests -v
 python -m scanner.demo
 ```
 
+For the CI-equivalent check, use one command. It resets and verifies the exact
+seed data before discovering and running the complete test suite:
+
+```powershell
+python -m scripts.ci
+```
+
+Scanner lifecycle events are written as one JSON object per line. Logs contain
+event names, outcomes, endpoint templates, and counts; structured credentials,
+authorization headers, passwords, and known token values are redacted.
+
 The SQLite database is created locally at `data/sentinel_demo.db` and is excluded from version control.
 Running a scan writes JSON and Markdown reports to `reports/`. The scanner uses bounded GET requests for the ownership comparison and reports BOLA only when User A receives the same object User B receives. The secondary data-exposure check runs on User A's own order response.
+Authentication, bounded request execution, ownership comparison, and report
+construction implement typed interfaces so each policy can be tested or replaced
+independently. Reports retain the endpoint audit list and also group `pass`,
+`fail`, `inconclusive`, and `error` outcomes with explicit counts.

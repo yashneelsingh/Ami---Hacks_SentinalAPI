@@ -14,6 +14,16 @@ from .reproduction import build_curl
 from .severity import sort_key
 
 
+REPORT_SCHEMA_VERSION = "1.1"
+
+
+class JsonReporter:
+    """Default implementation of the typed reporting boundary."""
+
+    def build(self, findings: Iterable[Finding], target_name: str, *, secrets: Iterable[str] = ()) -> dict:
+        return build_report(findings, target_name, secrets=secrets)
+
+
 def _summary(findings: list[Finding]) -> dict[str, int]:
     counts = Counter(finding.severity for finding in findings)
     return {severity: counts.get(severity, 0) for severity in ("Critical", "High", "Medium", "Low", "Pass")}
@@ -23,6 +33,7 @@ def build_report(findings: Iterable[Finding], target_name: str, *, secrets: Iter
     ordered = sorted(list(findings), key=sort_key, reverse=True)
     report = {
         "tool": "SentinelAPI",
+        "version": REPORT_SCHEMA_VERSION,
         "target": target_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": _summary(ordered),
@@ -48,6 +59,16 @@ def markdown_report(report: dict) -> str:
         f"| {summary['Critical']} | {summary['High']} | {summary['Medium']} | {summary['Low']} | {summary['Pass']} |",
         "",
     ]
+    outcome_counts = report.get("outcome_counts")
+    if outcome_counts:
+        lines.extend([
+            "## Endpoint outcomes",
+            "",
+            "| Pass | Fail | Inconclusive | Error |",
+            "| --- | --- | --- | --- |",
+            f"| {outcome_counts['pass']} | {outcome_counts['fail']} | {outcome_counts['inconclusive']} | {outcome_counts['error']} |",
+            "",
+        ])
     findings = report["findings"]
     if not findings:
         message = (

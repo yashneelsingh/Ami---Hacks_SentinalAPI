@@ -42,6 +42,8 @@ class CoreScannerTests(unittest.TestCase):
         self.assertEqual(report["summary"]["Critical"], 1)
         self.assertEqual(report["summary"]["High"], 1)
         self.assertEqual(report["tested_endpoints"][0]["cross_user_status"], 200)
+        self.assertEqual(report["outcome_counts"], {"pass": 0, "fail": 1, "inconclusive": 0, "error": 0})
+        self.assertEqual(report["outcomes"]["fail"], report["tested_endpoints"])
         self.assertNotIn("demo-token-user-a", str(report))
 
     def _controlled_scan(self, *, cross_status=403, cross_body=None, same_object_id=False):
@@ -79,6 +81,7 @@ class CoreScannerTests(unittest.TestCase):
         self.assertEqual(report["scan_status"], "completed")
         self.assertEqual(report["result"], "clean")
         self.assertEqual(report["tested_endpoints"][0]["outcome"], "pass")
+        self.assertEqual(report["outcome_counts"], {"pass": 1, "fail": 0, "inconclusive": 0, "error": 0})
 
     def test_secure_404_produces_no_bola(self):
         report = self._controlled_scan(cross_status=404, cross_body={"detail": "Not found"})
