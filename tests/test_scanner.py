@@ -17,6 +17,16 @@ class ScannerModuleTests(unittest.TestCase):
         self.assertEqual(findings[0].severity, "High")
         self.assertIn("internalNotes", findings[0].evidence)
 
+    def test_data_exposure_flags_seeded_api_snake_case_fields(self):
+        findings = check_excessive_data_exposure(
+            endpoint="/orders/{order_id}",
+            method="GET",
+            response_body={"internal_notes": "private", "payment_reference": "pay_demo_1002"},
+            request={"method": "GET", "url": "http://127.0.0.1:8000/orders/1002"},
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].metadata["exposed_fields"], ["internal_notes", "payment_reference"])
+
     def test_rate_limit_check_is_bounded(self):
         with self.assertRaises(ValueError):
             check_rate_limit_observation(

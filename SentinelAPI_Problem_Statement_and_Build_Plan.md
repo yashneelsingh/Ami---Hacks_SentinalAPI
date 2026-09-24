@@ -164,51 +164,24 @@ Finding scorer and evidence collector
 HTML dashboard or Markdown/JSON report
 ```
 
-## Four-Person Build Split
+## Suggested Build Split
 
-Each person owns one working part of the demo. Agree on the OpenAPI format, request/response structure, and finding JSON schema before implementation begins.
+### Backend and security logic
 
-### Person 1 - Test API and environment owner
+- Build or configure the vulnerable sandbox API.
+- Parse the OpenAPI specification.
+- Implement authenticated requests for both test users.
+- Implement the IDOR or BOLA detection flow.
+- Add one secondary security check.
+- Generate reproducible curl or HTTP requests.
 
-- Use Gemini or Claude to generate the local intentionally vulnerable order API from the prompt above.
-- Verify the two test users, orders `1001` and `1002`, login, reset script, and OpenAPI file all work locally.
-- Confirm that User A can incorrectly retrieve User B's order through the seeded BOLA vulnerability.
-- Write the setup README and share the base URL, test credentials, and OpenAPI location with the team.
-- Keep the target local-only and resettable before every final demo.
+### Frontend and reporting
 
-### Person 2 - OpenAPI parser and BOLA scanner owner
-
-- Parse `openapi.yaml` or `/openapi.json` to discover endpoints, path parameters, and authentication requirements.
-- Implement login and authenticated request handling for User A and User B.
-- Build the core BOLA or IDOR test: access an object owned by User A, replace its ID with User B's ID, then compare the result.
-- Save request, response status, response body evidence, and expected secure behaviour in a structured finding.
-- This is the most important ownership area: it must work reliably before extra features are added.
-
-### Person 3 - Secondary checks and report engine owner
-
-- Implement one secondary check: excessive data exposure is recommended because it is deterministic and easy to show.
-- Add severity scoring: `Critical`, `High`, `Medium`, or `Pass`.
-- Generate a reproducible curl command or raw HTTP request for each confirmed finding.
-- Define a shared finding JSON format containing title, severity, endpoint, evidence, expected result, actual result, and remediation.
-- Produce a Markdown or JSON report even if the dashboard is unfinished.
-
-### Person 4 - Dashboard, integration, and demo owner
-
-- Build the simple UI: choose/upload spec, start scan, show scan progress, and display findings.
-- Render findings in judge-friendly language: what was accessed, why it is dangerous, and how to reproduce it.
-- Integrate the scanner and report output from Persons 2 and 3; do not duplicate scanning logic in the frontend.
-- Own end-to-end testing, reset the sandbox API before demos, and prepare the final 2-minute demonstration flow.
-- Prepare slides or a short narrative only after the end-to-end scan works.
-
-### Shared schedule
-
-| Time | Whole-team target |
-| --- | --- |
-| Hours 0-2 | Agree on stack, OpenAPI contract, seeded data, and the finding JSON schema. |
-| Hours 2-6 | Test API works; User A can access User B's order; scanner makes authenticated calls. |
-| Hours 6-12 | Confirmed BOLA finding and generated reproduction command. |
-| Hours 12-18 | Secondary check, severity scoring, dashboard integration. |
-| Hours 18-24 | End-to-end testing, reset/rehearsal, and final demo polish. |
+- Build the spec upload or demo-selection screen.
+- Display scan status and tested endpoints.
+- Show severity-ranked findings.
+- Show why the finding matters, the evidence, and how to reproduce it.
+- Make the final report easy for a non-security judge to understand.
 
 ## Priorities
 

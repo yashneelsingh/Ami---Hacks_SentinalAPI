@@ -1,7 +1,7 @@
 # SentinelAPI Scan Report
 
 **Target:** Local intentionally vulnerable Order API
-**Generated:** 2026-09-24T08:51:44.598082+00:00
+**Generated:** 2026-09-24T09:03:34.527284+00:00
 
 ## Summary
 
@@ -13,7 +13,7 @@
 
 ### 1. [Critical] Broken Object Level Authorization
 
-- **Endpoint:** `GET /orders/{id}`
+- **Endpoint:** `GET /orders/{order_id}`
 - **Score:** 9.5/10
 - **Evidence:** User A requested order 1002, owned by User B, and received HTTP 200 with User B's order data.
 - **Expected:** HTTP 403 or HTTP 404 because order 1002 is not owned by User A.
@@ -23,14 +23,14 @@
 **Safe reproduction command**
 
 ```bash
-curl -X GET "http://localhost:5000/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
+curl -X GET "http://127.0.0.1:8000/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
 ```
 
 ### 2. [High] Excessive Data Exposure
 
-- **Endpoint:** `GET /orders/{id}`
+- **Endpoint:** `GET /orders/{order_id}`
 - **Score:** 7.0/10
-- **Evidence:** The response included sensitive field(s): internalNotes, paymentReference
+- **Evidence:** The response included sensitive field(s): internal_notes, payment_reference
 - **Expected:** A normal user response should omit internal or secret fields.
 - **Observed:** Sensitive fields were returned in the API response.
 - **Fix:** Return an allowlisted response DTO for this endpoint and exclude internal notes, payment references, tokens, and secrets.
@@ -38,7 +38,7 @@ curl -X GET "http://localhost:5000/orders/1002" -H "Authorization: Bearer <TEST_
 **Safe reproduction command**
 
 ```bash
-curl -X GET "http://localhost:5000/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
+curl -X GET "http://127.0.0.1:8000/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
 ```
 
 ### 3. [Medium] Possible Missing Rate Limiting
@@ -53,5 +53,5 @@ curl -X GET "http://localhost:5000/orders/1002" -H "Authorization: Bearer <TEST_
 **Safe reproduction command**
 
 ```bash
-curl -X POST "http://localhost:5000/auth/login" -H "Content-Type: application/json" -d '{"email":"user-a@example.test"}'
+curl -X POST "http://127.0.0.1:8000/auth/login" -H "Content-Type: application/json" -d '{"email":"user-a@example.test","password":"demo-password-a"}'
 ```

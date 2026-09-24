@@ -28,6 +28,11 @@ SENSITIVE_FIELD_NAMES = {
 }
 
 
+def _normalize_field_name(field_name: str) -> str:
+    """Match API field names across camelCase, snake_case, and kebab-case."""
+    return "".join(character for character in field_name.lower() if character.isalnum())
+
+
 def _flatten_keys(value: Any, prefix: str = "") -> list[str]:
     """Return dot paths for JSON keys, including nested object keys."""
     found: list[str] = []
@@ -55,10 +60,10 @@ def check_excessive_data_exposure(
     `allowed_sensitive_fields` exists for endpoints where a field is explicitly
     justified. Field matching is case-insensitive and checks JSON key names only.
     """
-    allowed = {field.lower() for field in allowed_sensitive_fields}
+    allowed = {_normalize_field_name(field) for field in allowed_sensitive_fields}
     exposed = []
     for key_path in _flatten_keys(response_body):
-        field_name = key_path.rsplit(".", 1)[-1].split("[", 1)[0].lower()
+        field_name = _normalize_field_name(key_path.rsplit(".", 1)[-1].split("[", 1)[0])
         if field_name in SENSITIVE_FIELD_NAMES and field_name not in allowed:
             exposed.append(key_path)
 
