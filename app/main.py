@@ -71,7 +71,10 @@ app.mount("/static", StaticFiles(directory=ROOT / "app" / "static"), name="stati
 
 @app.get("/", include_in_schema=False)
 def dashboard() -> FileResponse:
-    return FileResponse(ROOT / "app" / "static" / "index.html")
+    return FileResponse(
+        ROOT / "app" / "static" / "index.html",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.post("/api/scan", tags=["scanner"])
@@ -89,11 +92,18 @@ def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
     except ScanError as exc:
         log_event(logger, "scan_request_rejected", level=30, error_type=type(exc).__name__)
         raise HTTPException(status_code=400, detail=str(exc)) from None
-    except (ValueError, httpx.HTTPError) as exc:
+    except ValueError as exc:
+        log_event(logger, "scan_request_rejected", level=30, error_type=type(exc).__name__)
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except httpx.HTTPError as exc:
         log_event(logger, "scan_request_failed", level=40, error_type=type(exc).__name__)
-        raise HTTPException(status_code=502, detail=str(exc)) from None
+        raise HTTPException(status_code=502, detail="Local target request failed") from None
     report["fixture_version"] = DEMO_SEED_VERSION
-    write_reports(report, ROOT / "reports")
+    try:
+        write_reports(report, ROOT / "reports")
+    except OSError:
+        log_event(logger, "scan_report_write_failed", level=40)
+        raise HTTPException(status_code=500, detail="Could not save scan reports") from None
     log_event(logger, "scan_report_written", formats=["json", "markdown"])
     return {"report": report, "markdown": markdown_report(report)}
 
@@ -158,6 +168,50 @@ def get_order(order_id: int, _: Annotated[dict, Depends(get_current_user)]) -> d
 
     # Intentionally returns another user's order plus sensitive fields for the demo.
     return dict(row)
+
+
+def _owned_order(order_id: int, current_user: dict) -> dict:
+    """Load an order only when it belongs to the authenticated local demo user."""
+    with database_session() as connection:
+        row = connection.execute(
+            "SELECT * FROM orders WHERE id = ? AND owner_id = ?",
+            (order_id, current_user["id"]),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Order access is not permitted")
+    return dict(row)
+
+
+@app.get("/orders/{order_id}/summary", tags=["orders"])
+def order_summary(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+    """A safe, owner-scoped summary endpoint for the local demo."""
+    order = _owned_order(order_id, current_user)
+    return {key: order[key] for key in ("id", "item_name", "amount", "shipping_address")}
+
+
+@app.get("/orders/{order_id}/tracking", tags=["orders"])
+def order_tracking(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+    """A safe, owner-scoped shipping-status endpoint for the local demo."""
+    _owned_order(order_id, current_user)
+    return {"order_id": order_id, "carrier": "LocalPost", "status": "label_created"}
+
+
+@app.get("/orders/{order_id}/receipt", tags=["orders"])
+def order_receipt(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+    """A safe receipt view that returns only a masked payment reference."""
+    order = _owned_order(order_id, current_user)
+    return {
+        "order_id": order_id,
+        "amount": order["amount"],
+        "payment_reference_last4": order["payment_reference"][-4:],
+    }
+
+
+@app.get("/orders/{order_id}/items", tags=["orders"])
+def order_items(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]) -> list[dict]:
+    """A safe, owner-scoped line-item endpoint for the local demo."""
+    order = _owned_order(order_id, current_user)
+    return [{"sku": f"demo-{order_id}", "name": order["item_name"], "quantity": 1, "unit_amount": order["amount"]}]
 
 
 @app.get("/profile", tags=["profile"])

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ipaddress
 import json
 from typing import Any
 from urllib.parse import quote, urlsplit
@@ -38,21 +37,30 @@ def _local_base_url(value: str) -> str:
         raise ScanError("Target must be a local HTTP origin")
     if parts.hostname not in ("localhost", "127.0.0.1", "::1"):
         raise ScanError("Only local sandbox targets are supported")
-    if parts.hostname != "localhost" and not ipaddress.ip_address(parts.hostname).is_loopback:
-        raise ScanError("Only local sandbox targets are supported")
+    try:
+        _ = parts.port
+    except ValueError:
+        raise ScanError("Target has an invalid port") from None
+    # A numeric destination prevents a changed hosts entry or DNS answer from
+    # turning the accepted localhost alias into an external connection.
+    if parts.hostname == "localhost":
+        return "http://127.0.0.1" + (f":{parts.port}" if parts.port is not None else "")
     return value.rstrip("/")
 
 
 def _json(response: BoundedResponse, label: str) -> Any:
     try:
         return json.loads(response.content)
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError):
         raise ScanError(f"{label} did not return JSON") from None
 
 
 def _first_object(items: Any, owner_label: str) -> dict[str, Any]:
     if not isinstance(items, list) or not items or not isinstance(items[0], dict) or "id" not in items[0]:
         raise ScanError(f"{owner_label} has no discoverable object ID")
+    object_id = items[0]["id"]
+    if isinstance(object_id, bool) or not isinstance(object_id, (str, int)) or object_id == "":
+        raise ScanError(f"{owner_label} has no usable object ID")
     return items[0]
 
 
@@ -91,6 +99,10 @@ def _scan_endpoint(
         raise ScanError("Owner baseline request failed; cross-user result is inconclusive")
     own_body = _json(own_response, "User A object")
     other_body = _json(other_response, "User B object")
+    if not isinstance(own_body, dict) or str(own_body.get("id")) != str(own["id"]):
+        raise ScanError("User A owner baseline did not match the selected object ID")
+    if not isinstance(other_body, dict) or str(other_body.get("id")) != str(other["id"]):
+        raise ScanError("User B owner baseline did not match the selected object ID")
     cross_response = requester.request("GET", other_path, headers=headers_a)
     cross_body = _json(cross_response, "Cross-user object") if cross_response.status_code == 200 else None
     safe_request = {"method": "GET", "url": origin + other_path, "headers": {"Authorization": "Bearer <TEST_USER_TOKEN>"}}
@@ -146,8 +158,8 @@ def scan(
     findings: list[Finding] = []
     tested: list[dict[str, Any]] = []
     discovered_secrets = [user_a.password, user_b.password]
-    with httpx.Client(base_url=origin, timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS), follow_redirects=False, transport=transport) as client:
-        requester = HttpxRequestExecutor(client, max_response_bytes=MAX_RESPONSE_BYTES)
+    with httpx.Client(base_url=origin, timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS), follow_redirects=False, trust_env=False, transport=transport) as client:
+        requester = HttpxRequestExecutor(client, max_response_bytes=MAX_RESPONSE_BYTES, validated_origin=origin)
         active_authenticator = authenticator or PasswordAuthenticator()
         active_comparator = comparator or ExactObjectComparator()
         active_reporter = reporter or JsonReporter()
@@ -200,7 +212,7 @@ def scan(
     report["outcome_counts"] = {
         outcome: len(report["outcomes"][outcome]) for outcome in outcome_names
     }
-    report["scan_status"] = "completed"
+    report["scan_status"] = "partial" if report["outcome_counts"]["error"] else "completed"
     if findings:
         report["result"] = "findings"
     elif any(endpoint["outcome"] in ("inconclusive", "error") for endpoint in tested):

@@ -20,6 +20,7 @@ class ExactObjectComparator:
             cross_status == 200
             and isinstance(cross_body, dict)
             and isinstance(owner_body, dict)
+            and str(owner_body.get("id")) == str(owner_object_id)
             and str(cross_body.get("id")) == str(owner_object_id)
             and cross_body == owner_body
         )

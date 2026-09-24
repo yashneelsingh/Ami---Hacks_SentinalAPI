@@ -36,14 +36,18 @@ def _normalize_field_name(field_name: str) -> str:
 def _flatten_keys(value: Any, prefix: str = "") -> list[str]:
     """Return dot paths for JSON keys, including nested object keys."""
     found: list[str] = []
-    if isinstance(value, dict):
-        for key, child in value.items():
-            path = f"{prefix}.{key}" if prefix else str(key)
+    pending: list[tuple[Any, str, bool]] = [(value, prefix, False)]
+    while pending:
+        current, path, is_key = pending.pop()
+        if is_key:
             found.append(path)
-            found.extend(_flatten_keys(child, path))
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            found.extend(_flatten_keys(child, f"{prefix}[{index}]"))
+        if isinstance(current, dict):
+            for key, child in reversed(list(current.items())):
+                child_path = f"{path}.{key}" if path else str(key)
+                pending.append((child, child_path, True))
+        elif isinstance(current, list):
+            for index in range(len(current) - 1, -1, -1):
+                pending.append((current[index], f"{path}[{index}]", False))
     return found
 
 

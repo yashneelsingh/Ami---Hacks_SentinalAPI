@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -20,8 +22,27 @@ class ObjectEndpoint:
     parameter_name: str
 
 
+def validate_openapi_path(path: object) -> str:
+    """Accept only origin-relative routes; a specification cannot choose a host."""
+    if not isinstance(path, str) or not path.startswith("/") or path.startswith("//"):
+        raise ValueError("OpenAPI paths must be origin-relative routes")
+    if any(unicodedata.category(character) == "Cc" for character in path) or "\\" in path:
+        raise ValueError("OpenAPI path contains unsafe characters")
+    parts = urlsplit(path)
+    if parts.scheme or parts.netloc or parts.username or parts.password or parts.query or parts.fragment:
+        raise ValueError("OpenAPI paths must be origin-relative routes")
+    return path
+
+
 def parse_spec(source: str | dict[str, Any]) -> dict[str, Any]:
-    if isinstance(source, str) and len(source.encode("utf-8")) > MAX_SPEC_BYTES:
+    if isinstance(source, dict):
+        try:
+            source_size = len(json.dumps(source).encode("utf-8"))
+        except (TypeError, ValueError, RecursionError):
+            raise ValueError("Invalid OpenAPI document") from None
+    else:
+        source_size = len(source.encode("utf-8"))
+    if source_size > MAX_SPEC_BYTES:
         raise ValueError(f"OpenAPI document exceeds the {MAX_SPEC_BYTES}-byte limit")
     try:
         document = source if isinstance(source, dict) else yaml.safe_load(source)
@@ -38,6 +59,8 @@ def parse_spec(source: str | dict[str, Any]) -> dict[str, Any]:
         raise ValueError("OpenAPI document is missing paths")
     if not isinstance(document.get("paths"), dict):
         raise ValueError("OpenAPI paths must be an object")
+    for path in document["paths"]:
+        validate_openapi_path(path)
     return document
 
 
@@ -51,6 +74,12 @@ def discover_object_endpoints(document: dict[str, Any]) -> list[ObjectEndpoint]:
         if not match:
             continue
         collection_path, parameter_name = match.groups()
+        # Nested resources such as /orders/{id}/tracking are legitimate API
+        # routes, but this narrow scanner only supports top-level collections.
+        # Treating the parameterized parent as a collection would issue an
+        # invalid literal request and make a live scan look partially failed.
+        if "{" in collection_path:
+            continue
         detail_get = path_item.get("get")
         collection_item = paths.get(collection_path)
         collection_get = collection_item.get("get") if isinstance(collection_item, dict) else None

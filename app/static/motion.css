@@ -1,0 +1,63 @@
+/* Layered enhancements for a calm, responsive security dashboard. */
+.app-body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(99, 102, 241, .15), transparent 30rem),
+    radial-gradient(circle at 96% 15%, rgba(16, 185, 129, .10), transparent 25rem),
+    var(--canvas);
+}
+
+.app-shell { position: relative; isolation: isolate; }
+.app-shell, .app-shell * { cursor: default; }
+.app-shell a, .app-shell button, .app-shell summary, .app-shell .file-button, .app-shell .file-button * { cursor: pointer; }
+.app-shell input, .app-shell textarea { cursor: text; }
+.intro-section, .panel-heading, .section-heading, footer {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.app-shell::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  opacity: .6;
+  background-image: linear-gradient(rgba(85, 92, 173, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(85, 92, 173, .035) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: linear-gradient(to bottom, #000, transparent 40%);
+}
+
+.topbar { backdrop-filter: blur(14px); }
+.brand { transition: transform 180ms ease, color 180ms ease; }
+.brand:hover { color: var(--accent); transform: translateX(2px); }
+.brand-mark { transition: transform 260ms cubic-bezier(.2, .8, .2, 1), box-shadow 260ms ease; }
+.brand:hover .brand-mark { transform: rotate(-7deg) scale(1.06); box-shadow: 0 9px 20px rgba(32, 37, 54, .22); }
+
+h1 span { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(85, 92, 173, .24); text-decoration-thickness: .14em; text-underline-offset: .08em; }
+.reveal { opacity: 0; animation: lift-in 600ms cubic-bezier(.2, .7, .2, 1) forwards; }
+.reveal-1 { animation-delay: 50ms; }.reveal-2 { animation-delay: 140ms; }.reveal-3 { animation-delay: 230ms; }.reveal-4 { animation-delay: 320ms; }
+
+.scan-panel, .comparison-content { box-shadow: 0 12px 34px rgba(29, 35, 66, .055); }
+.scan-panel { transition: transform 220ms ease, box-shadow 220ms ease; }
+.scan-panel:hover { transform: translateY(-2px); box-shadow: 0 18px 44px rgba(29, 35, 66, .09); }
+.form-field { transition: background-color 180ms ease; }
+.form-field:focus-within { background: linear-gradient(135deg, rgba(85, 92, 173, .055), transparent); }
+.primary-button { transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+.primary-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(32, 37, 54, .27); }
+.primary-button:active:not(:disabled) { transform: translateY(0) scale(.98); }
+.secondary-button, .file-button { transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+.secondary-button:hover:not(:disabled), .file-button:hover { transform: translateY(-1px); box-shadow: 0 7px 16px rgba(52, 59, 111, .12); }
+
+.scan-state.running { animation: status-pulse 1.35s ease-in-out infinite; }
+.comparison-content, .table-wrap { transition: box-shadow 220ms ease, border-color 220ms ease; }
+.comparison-content:hover, .table-wrap:hover { box-shadow: 0 12px 26px rgba(29, 35, 66, .055); }
+.comparison-step { transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.comparison-step:hover { transform: translateY(-3px); border-color: rgba(85, 92, 173, .36); box-shadow: 0 10px 18px rgba(46, 53, 100, .08); }
+.finding { animation: lift-in 360ms ease both; }
+.finding:nth-child(2) { animation-delay: 70ms; }.finding:nth-child(3) { animation-delay: 140ms; }
+
+@keyframes lift-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes status-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(85, 92, 173, .12); } 50% { box-shadow: 0 0 0 7px rgba(85, 92, 173, 0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  .reveal { opacity: 1; }
+}

@@ -36,7 +36,7 @@ def redact_value(value: Any, secrets: Iterable[str] = ()) -> Any:
         redacted: dict[Any, Any] = {}
         for key, child in value.items():
             normalized = "".join(character for character in str(key).lower() if character.isalnum() or character == "_")
-            if normalized in _SENSITIVE_KEYS:
+            if normalized in _SENSITIVE_KEYS or normalized.endswith("token"):
                 if normalized == "authorization" and isinstance(child, str) and child.lower().startswith("bearer "):
                     redacted[key] = "Bearer <REDACTED>"
                 else:

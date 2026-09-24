@@ -79,6 +79,7 @@ See `HOSTED_DATABASE.md` for operations and disaster recovery.
 
 - Loopback HTTP targets only: `localhost`, `127.0.0.1`, and `::1`.
 - Read-only scanner traffic using bounded `GET` requests.
+- Origin-relative OpenAPI paths and a final scheme, host, and port check before dispatch. Environment proxies are ignored.
 - Five-second request timeout, redirect blocking, three-endpoint limit, 250,000-byte specification limit, and 1,000,000-byte response limit.
 - Deterministic seeded identities and orders; no real accounts or production data.
 - Redacted authorization headers, tokens, and passwords.

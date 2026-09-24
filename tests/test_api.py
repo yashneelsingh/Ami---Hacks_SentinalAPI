@@ -28,6 +28,29 @@ class VulnerableDemoTests(unittest.TestCase):
         response = self.client.get("/orders/1001")
         self.assertEqual(response.status_code, 401)
 
+    def test_owner_scoped_order_support_endpoints(self):
+        headers = {"Authorization": "Bearer demo-token-user-a"}
+        expectations = {
+            "/orders/1001/summary": {"id": 1001, "item_name": "SentinelAPI Hoodie"},
+            "/orders/1001/tracking": {"order_id": 1001, "status": "label_created"},
+            "/orders/1001/receipt": {"order_id": 1001, "payment_reference_last4": "1001"},
+            "/orders/1001/items": {"sku": "demo-1001", "quantity": 1},
+        }
+        for path, expected in expectations.items():
+            with self.subTest(path=path):
+                response = self.client.get(path, headers=headers)
+                self.assertEqual(response.status_code, 200)
+                body = response.json()[0] if path.endswith("/items") else response.json()
+                for key, value in expected.items():
+                    self.assertEqual(body[key], value)
+
+    def test_owner_scoped_order_support_endpoints_reject_cross_user_access(self):
+        headers = {"Authorization": "Bearer demo-token-user-a"}
+        for suffix in ("summary", "tracking", "receipt", "items"):
+            with self.subTest(suffix=suffix):
+                response = self.client.get(f"/orders/1002/{suffix}", headers=headers)
+                self.assertEqual(response.status_code, 403)
+
 
 class SecureControlTests(unittest.TestCase):
     def setUp(self):

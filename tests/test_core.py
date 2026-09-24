@@ -26,6 +26,7 @@ class CoreScannerTests(unittest.TestCase):
         self.assertEqual(len(endpoints), 1)
         self.assertEqual(endpoints[0].detail_path, "/orders/{order_id}")
         self.assertEqual(endpoints[0].collection_path, "/orders")
+        self.assertEqual(len(endpoints), 1)  # Nested support routes are not scanner targets.
         self.assertEqual(discover_object_endpoints(parse_spec(app.openapi()))[0].detail_path, "/orders/{order_id}")
 
     def test_live_two_user_scan_confirms_bola_and_exposure(self):
@@ -89,6 +90,52 @@ class CoreScannerTests(unittest.TestCase):
         report = self._controlled_scan(cross_status=404, cross_body={"detail": "Not found"})
         self.assertFalse(any(finding["category"] == "BOLA" for finding in report["findings"]))
         self.assertEqual(report["tested_endpoints"][0]["outcome"], "pass")
+
+    def test_unexpected_cross_user_status_is_inconclusive(self):
+        for status in (401, 429, 500):
+            with self.subTest(status=status):
+                report = self._controlled_scan(cross_status=status, cross_body={"detail": "unavailable"})
+                self.assertEqual(report["result"], "inconclusive")
+                self.assertEqual(report["tested_endpoints"][0]["outcome"], "inconclusive")
+                self.assertEqual(report["findings"], [])
+
+    def test_owner_baseline_id_mismatch_is_error(self):
+        def respond(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/auth/login":
+                email = json.loads(request.content)["email"]
+                return httpx.Response(200, json={"access_token": "token-a" if email.startswith("user-a") else "token-b"})
+            if request.url.path == "/orders":
+                return httpx.Response(200, json=[{"id": 1001 if request.headers["authorization"].endswith("a") else 1002}])
+            return httpx.Response(200, json={"id": 9999})
+
+        report = scan(
+            spec=(ROOT / "openapi.yaml").read_text(encoding="utf-8"),
+            base_url="http://127.0.0.1:8000",
+            user_a=Credentials("user-a@example.test", "demo-password-a"),
+            user_b=Credentials("user-b@example.test", "demo-password-b"),
+            transport=httpx.MockTransport(respond),
+        )
+        self.assertEqual(report["result"], "inconclusive")
+        self.assertEqual(report["scan_status"], "partial")
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "error")
+        self.assertEqual(report["findings"], [])
+
+    def test_non_scalar_collection_id_is_error(self):
+        def respond(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/auth/login":
+                return httpx.Response(200, json={"access_token": "token"})
+            return httpx.Response(200, json=[{"id": {"nested": 1001}}])
+
+        report = scan(
+            spec=(ROOT / "openapi.yaml").read_text(encoding="utf-8"),
+            base_url="http://127.0.0.1:8000",
+            user_a=Credentials("user-a@example.test", "demo-password-a"),
+            user_b=Credentials("user-b@example.test", "demo-password-b"),
+            transport=httpx.MockTransport(respond),
+        )
+        self.assertEqual(report["result"], "inconclusive")
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "error")
+        self.assertEqual(report["findings"], [])
 
     def test_mismatched_or_malformed_200_does_not_prove_victim_object(self):
         for body in ({"id": 9999, "item_name": "Different item"}, ["not", "an", "object"]):

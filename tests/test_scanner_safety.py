@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from scanner.core import MAX_ENDPOINTS, MAX_RESPONSE_BYTES, Credentials, ScanError, scan
 from scanner.openapi_parser import MAX_SPEC_BYTES, parse_spec
+from scanner.request_execution import HttpxRequestExecutor, RequestExecutionError
 from scanner.redaction import redact_value
 from scanner.report_generator import build_report, markdown_report
 from scanner.models import Finding
@@ -60,6 +61,48 @@ def successful_handler(request: httpx.Request) -> httpx.Response:
 
 
 class OpenApiSafetyTests(unittest.TestCase):
+    def test_spec_rejects_destination_escape_paths_without_echoing_them(self):
+        invalid_paths = (
+            "http://example.com/orders",
+            "https://example.com/orders",
+            "//example.com/orders",
+            "/\\example.com/orders",
+            "/orders\nsecret-marker",
+            "/orders\x00secret-marker",
+            "/orders?token=secret-marker",
+            42,
+        )
+        for path in invalid_paths:
+            with self.subTest(path=path), self.assertRaises(ValueError) as raised:
+                parse_spec({"openapi": "3.1.0", "paths": {path: {"get": {}}}})
+            self.assertNotIn("secret-marker", str(raised.exception))
+        self.assertEqual(list(parse_spec(BASE_SPEC)["paths"]), ["/orders", "/orders/{id}"])
+
+    def test_malicious_spec_never_dispatches(self):
+        dispatched = []
+        malicious = deepcopy(BASE_SPEC)
+        malicious["paths"]["http://example.com/orders/{id}"] = malicious["paths"].pop("/orders/{id}")
+        with self.assertRaises(ValueError):
+            run_scan(lambda request: dispatched.append(request) or httpx.Response(200), malicious)
+        self.assertEqual(dispatched, [])
+
+    def test_localhost_alias_uses_numeric_loopback(self):
+        seen_hosts = []
+
+        def handler(request):
+            seen_hosts.append(request.url.host)
+            return successful_handler(request)
+
+        report = scan(
+            spec=BASE_SPEC,
+            base_url="http://localhost:8000",
+            user_a=USERS[0],
+            user_b=USERS[1],
+            transport=httpx.MockTransport(handler),
+        )
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "fail")
+        self.assertEqual(set(seen_hosts), {"127.0.0.1"})
+
     def test_scan_route_uses_submitted_local_base_url(self):
         report = build_report([], "Custom local target")
         report.update({"tested_endpoints": [], "scan_status": "completed", "result": "clean"})
@@ -107,6 +150,18 @@ class OpenApiSafetyTests(unittest.TestCase):
         self.assertIn("byte limit", response.json()["detail"])
         self.assertNotIn(marker, response.text)
 
+    def test_report_persistence_failure_is_controlled(self):
+        report = build_report([], "Local target")
+        report.update({"tested_endpoints": [], "scan_status": "completed", "result": "clean"})
+        with patch("app.main.scan", return_value=report), patch(
+            "app.main.write_reports", side_effect=OSError("C:\\private\\credential-marker")
+        ):
+            with TestClient(app) as client:
+                response = client.post("/api/scan", json={"base_url": "http://127.0.0.1:8000"})
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["detail"], "Could not save scan reports")
+        self.assertNotIn("credential-marker", response.text)
+
     def test_endpoint_count_is_bounded(self):
         spec = {"openapi": "3.1.0", "paths": {}}
         for index in range(MAX_ENDPOINTS + 1):
@@ -120,6 +175,67 @@ class OpenApiSafetyTests(unittest.TestCase):
 
 
 class TransportSafetyTests(unittest.TestCase):
+    def test_invalid_requests_never_reach_transport(self):
+        dispatched = []
+
+        def handler(request):
+            dispatched.append(str(request.url))
+            return httpx.Response(200, json={})
+
+        with httpx.Client(
+            base_url="http://127.0.0.1:8000",
+            transport=httpx.MockTransport(handler),
+            trust_env=False,
+        ) as client:
+            executor = HttpxRequestExecutor(
+                client, max_response_bytes=1024, validated_origin="http://127.0.0.1:8000"
+            )
+            invalid_paths = (
+                "http://example.com/orders",
+                "https://example.com/orders",
+                "//example.com/orders",
+                "/\\example.com/orders",
+                "/orders\rsecret-marker",
+            )
+            for path in invalid_paths:
+                with self.subTest(path=path), self.assertRaises(RequestExecutionError) as raised:
+                    executor.request("GET", path, headers={"Authorization": "Bearer credential-marker"})
+                self.assertNotIn("credential-marker", str(raised.exception))
+                self.assertNotIn("secret-marker", str(raised.exception))
+            self.assertEqual(dispatched, [])
+            executor.request("GET", "/orders")
+        self.assertEqual(dispatched, ["http://127.0.0.1:8000/orders"])
+
+    def test_final_origin_check_blocks_altered_client_base(self):
+        dispatched = []
+        with httpx.Client(
+            base_url="http://localhost:9000",
+            transport=httpx.MockTransport(
+                lambda request: dispatched.append(request) or httpx.Response(200)
+            ),
+            trust_env=False,
+        ) as client:
+            executor = HttpxRequestExecutor(
+                client, max_response_bytes=1024, validated_origin="http://127.0.0.1:8000"
+            )
+            with self.assertRaisesRegex(RequestExecutionError, "destination differs"):
+                executor.request("POST", "/auth/login", json={"password": "credential-marker"})
+        self.assertEqual(dispatched, [])
+
+    def test_scan_client_ignores_environment_proxies(self):
+        real_client = httpx.Client
+        proxy_settings = {
+            "HTTP_PROXY": "http://proxy.invalid:8080",
+            "HTTPS_PROXY": "http://proxy.invalid:8080",
+            "ALL_PROXY": "http://proxy.invalid:8080",
+        }
+        with patch.dict("os.environ", proxy_settings), patch(
+            "scanner.core.httpx.Client", wraps=real_client
+        ) as client_constructor:
+            report = run_scan(successful_handler)
+        self.assertEqual(report["tested_endpoints"][0]["outcome"], "fail")
+        self.assertIs(client_constructor.call_args.kwargs["trust_env"], False)
+
     def test_login_failure_missing_token_and_non_json_are_controlled(self):
         cases = [
             (lambda _: httpx.Response(401, text="password-a-secret secret-token-a"), "Login failed for User A"),
@@ -220,10 +336,11 @@ class RedactionSafetyTests(unittest.TestCase):
             self.assertNotIn(leaked, serialized)
 
     def test_recursive_redaction_does_not_mutate_input(self):
-        original = {"headers": {"authorization": "Bearer token-value"}, "password": "password-value"}
+        original = {"headers": {"authorization": "Bearer token-value"}, "password": "password-value", "api_token": "generic-token-value"}
         safe = redact_value(original)
         self.assertEqual(original["password"], "password-value")
         self.assertEqual(safe["password"], "<REDACTED>")
+        self.assertEqual(safe["api_token"], "<REDACTED>")
 
     def test_structured_logs_exclude_credentials_and_tokens(self):
         stream = io.StringIO()

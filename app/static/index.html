@@ -5,66 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="SentinelAPI authorized local API security scanner">
   <title>SentinelAPI | Local API scan</title>
-  <link rel="stylesheet" href="/static/styles.css">
-  <script defer src="/static/app.js"></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260925">
+  <link rel="stylesheet" href="/static/icons.css?v=20260925">
+  <link rel="stylesheet" href="/static/motion.css?v=20260925">
+  <script defer src="/static/app.js?v=20260925"></script>
 </head>
-<body>
+<body class="app-body">
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#scan-setup" aria-label="SentinelAPI home">
-        <span class="brand-mark" aria-hidden="true">S</span><span>SentinelAPI</span>
-      </a>
-      <div class="topbar-actions">
-        <span class="environment"><span class="status-dot" aria-hidden="true"></span>Local sandbox</span>
-        <span id="header-target" class="target-host">127.0.0.1:8000</span>
-        <a class="docs-link" href="/docs" target="_blank" rel="noopener">API reference ↗</a>
-      </div>
+      <a class="brand" href="#scan-setup" aria-label="SentinelAPI home"><span class="brand-mark" aria-hidden="true"><svg class="icon icon-brand" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><span>SentinelAPI</span></a>
     </header>
-
     <main>
-      <section class="intro-section" aria-labelledby="page-title">
-        <p class="eyebrow">AUTHORIZED API SECURITY</p>
-        <h1 id="page-title">Prove who can access what.</h1>
-        <p>Test whether one authenticated user can read another user's object, then get the evidence needed to reproduce and fix it.</p>
-      </section>
-
-      <section id="scan-setup" class="scan-panel" aria-labelledby="setup-title">
-        <div class="panel-heading">
-          <div><h2 id="setup-title">Run a local ownership check</h2><p>OpenAPI 3.x · loopback HTTP only · bounded read-only GET requests</p></div>
-          <span id="scan-state" class="scan-state" aria-live="polite">Ready to scan</span>
-        </div>
+      <section class="intro-section reveal reveal-1" aria-labelledby="page-title"><p class="eyebrow">AUTHORIZED API SECURITY</p><h1 id="page-title">Prove who can access <span>what.</span></h1><p>Test whether one authenticated user can read another user's object, then get the evidence needed to reproduce and fix it.</p></section>
+      <section id="scan-setup" class="scan-panel reveal reveal-2" aria-labelledby="setup-title">
+        <div class="panel-heading"><div><h2 id="setup-title">Run a local ownership check</h2><p>OpenAPI 3.x · loopback HTTP only · bounded read-only GET requests</p></div><span id="scan-state" class="scan-state" aria-live="polite">Ready to scan</span></div>
         <div class="scan-form">
-          <div class="form-field spec-field">
-            <span class="field-label">OPENAPI DOCUMENT</span><strong id="spec-name">openapi.yaml</strong>
-            <span id="spec-source" class="field-help">Using the checked-in demo specification</span>
-            <div class="field-actions"><label class="file-button" for="spec-file">Choose file<input id="spec-file" type="file" accept=".yaml,.yml,.json,application/json,text/yaml"></label><a class="text-link" href="/openapi.json" target="_blank" rel="noopener">View demo spec ↗</a></div>
-          </div>
-          <div class="form-field url-field">
-            <label class="field-label" for="base-url-input">LOCAL API BASE URL</label>
-            <input id="base-url-input" type="url" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000" spellcheck="false" autocomplete="url" required>
-            <span class="field-help">localhost, 127.0.0.1, or ::1</span>
-          </div>
-          <div class="scan-action"><button id="run-scan" class="primary-button" type="button"><span class="button-label-long">Run authorized scan</span><span class="button-label-short">Run scan</span></button></div>
+          <div class="form-field spec-field"><span class="field-label">OPENAPI DOCUMENT</span><strong id="spec-name">openapi.yaml</strong><span id="spec-source" class="field-help">Using the checked-in demo specification</span><div class="field-actions"><label class="file-button" for="spec-file"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>Choose file<input id="spec-file" type="file" accept=".yaml,.yml,.json,application/json,text/yaml"></label><a class="text-link" href="/openapi.json" target="_blank" rel="noopener">View demo spec <svg class="icon icon-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a></div></div>
+          <div class="form-field url-field"><label class="field-label" for="base-url-input">LOCAL API BASE URL</label><input id="base-url-input" type="url" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000" spellcheck="false" autocomplete="url" required><span class="field-help">localhost, 127.0.0.1, or ::1</span></div>
+          <div class="scan-action"><button id="run-scan" class="primary-button" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V4h3"/><path d="M17 4h3v3"/><path d="M20 17v3h-3"/><path d="M7 20H4v-3"/><circle cx="11" cy="11" r="4"/><path d="m14 14 4 4"/></svg><span class="button-label-long">Run authorized scan</span><span class="button-label-short">Run scan</span></button></div>
         </div>
         <p id="error" class="error" role="alert" hidden></p>
       </section>
-
-      <section id="results" class="results-section" aria-labelledby="comparison-title">
-        <div class="section-heading"><div><p class="eyebrow">SCAN RESULT</p><h2 id="comparison-title">Ownership evidence</h2></div><span id="comparison-status" class="comparison-status">Awaiting scan</span></div>
-        <div id="comparison-content" class="comparison-content"><div class="comparison-empty"><strong>No response to compare yet.</strong><p>Run the scan to see both owner baselines and the cross-user response.</p></div></div>
-      </section>
-
-      <section id="endpoints" class="endpoint-section" aria-labelledby="endpoints-title">
-        <div class="section-heading compact-heading"><div><p class="eyebrow">TECHNICAL CHECK</p><h2 id="endpoints-title">Tested endpoint</h2></div><span id="endpoint-total" class="section-meta">Not yet tested</span></div>
-        <div class="table-wrap"><table><thead><tr><th scope="col">Method &amp; endpoint</th><th scope="col">User A object</th><th scope="col">User B object</th><th scope="col">Cross-user HTTP</th><th scope="col">Outcome</th></tr></thead><tbody id="endpoint-rows"><tr><td colspan="5" class="table-empty">Run a scan to populate this result.</td></tr></tbody></table></div>
-      </section>
-
-      <section id="findings-section" class="findings-section" aria-labelledby="findings-title">
-        <div class="section-heading findings-heading"><div><p class="eyebrow">ACTION REQUIRED</p><h2 id="findings-title">Findings</h2><p id="finding-total" class="section-meta" aria-live="polite">Not yet scanned</p></div><div class="download-actions" aria-label="Download scan report"><button id="download-json" class="secondary-button" type="button" disabled>JSON report</button><button id="download-md" class="secondary-button" type="button" disabled>Markdown report</button></div></div>
-        <div id="findings" class="findings"><div class="empty-state"><strong>No findings yet.</strong><p>Completed findings will appear here with evidence and remediation.</p></div></div>
-      </section>
+      <section id="results" class="results-section reveal reveal-3" aria-labelledby="comparison-title"><div class="section-heading"><div><p class="eyebrow">SCAN RESULT</p><h2 id="comparison-title">Ownership evidence</h2></div><span id="comparison-status" class="comparison-status">Awaiting scan</span></div><div id="comparison-content" class="comparison-content"><div class="comparison-empty"><strong>No response to compare yet.</strong><p>Run the scan to see both owner baselines and the cross-user response.</p></div></div></section>
+      <section id="endpoints" class="endpoint-section reveal reveal-4" aria-labelledby="endpoints-title"><div class="section-heading compact-heading"><div><p class="eyebrow">TECHNICAL CHECK</p><h2 id="endpoints-title">Tested endpoint</h2></div><span id="endpoint-total" class="section-meta">Not yet tested</span></div><div class="table-wrap"><table><thead><tr><th scope="col">Method &amp; endpoint</th><th scope="col">User A object</th><th scope="col">User B object</th><th scope="col">Cross-user HTTP</th><th scope="col">Outcome</th></tr></thead><tbody id="endpoint-rows"><tr><td colspan="5" class="table-empty">Run a scan to populate this result.</td></tr></tbody></table></div></section>
+      <section id="findings-section" class="findings-section reveal reveal-4" aria-labelledby="findings-title"><div class="section-heading findings-heading"><div><p class="eyebrow">ACTION REQUIRED</p><h2 id="findings-title">Findings</h2><p id="finding-total" class="section-meta" aria-live="polite">Not yet scanned</p></div><div class="download-actions" aria-label="Download scan report"><button id="download-json" class="secondary-button" type="button" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>JSON report</button><button id="download-md" class="secondary-button" type="button" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Markdown report</button></div></div><div id="findings" class="findings"><div class="empty-state"><strong>No findings yet.</strong><p>Completed findings will appear here with evidence and remediation.</p></div></div></section>
     </main>
-    <footer><span>Authorized local testing only</span><span>Vulnerable demo · unsafe for production</span></footer>
+    <footer><span>Authorized API security testing</span><span>SentinelAPI</span></footer>
   </div>
 </body>
 </html>

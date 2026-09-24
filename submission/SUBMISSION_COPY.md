@@ -39,8 +39,8 @@ and ambiguous comparisons remain inconclusive.
 
 ## Technical evidence
 
-- 49 automated tests pass through `python -m scripts.ci` in the documented
-  virtual environment.
+- The automated suite passes through `python -m scripts.ci` in the documented
+  virtual environment. Re-run it for the current test count before submission.
 - Deterministic reset restores two users and orders `1001` and `1002`.
 - Reports contain redacted bearer values and no seeded passwords.
 - Desktop and 375-pixel mobile browser flows are captured under `screenshots/`.

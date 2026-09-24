@@ -58,6 +58,10 @@ Tokens returned by login are deterministic demo tokens. They are not authenticat
 - `POST /auth/login`
 - `GET /orders`
 - `GET /orders/{order_id}`
+- `GET /orders/{order_id}/summary`
+- `GET /orders/{order_id}/tracking`
+- `GET /orders/{order_id}/receipt`
+- `GET /orders/{order_id}/items`
 - `GET /profile`
 - `GET /health`
 
@@ -89,9 +93,13 @@ the path item or the detail `GET`. Authentication must be declared by a non-empt
 discover at most three matching detail endpoints per scan.
 
 At runtime, the collection `GET` must return HTTP 200 and a non-empty JSON array;
-the first item must be an object with an `id` field. Each owner detail `GET` must
-return HTTP 200 JSON. A BOLA finding is confirmed only when User A's request for
-User B's ID returns HTTP 200 with the same JSON object returned to User B.
+the first item must be an object with an `id` field. The MVP assumes this first
+item belongs to the authenticated user; it does not infer ownership or paginate.
+Both selected IDs appear in the endpoint audit and reports. Each owner detail
+`GET` must return an HTTP 200 JSON object with the selected ID. A BOLA finding
+is confirmed only when User A's request for User B's ID returns HTTP 200 with
+the same JSON object returned to User B. Identical IDs, failed baselines, and
+ambiguous responses cannot produce a BOLA finding.
 
 ## MVP limitations
 
@@ -108,10 +116,19 @@ User B's ID returns HTTP 200 with the same JSON object returned to User B.
   extraction. It inspects only the first collection item and its `id` field.
 - Accepts UI-uploaded specifications up to 250,000 bytes, scans at most three
   discovered endpoints, limits each response to 1,000,000 bytes, uses a
-  five-second request timeout, and blocks redirects.
+  five-second request timeout, and blocks redirects. OpenAPI paths must be
+  origin-relative; the executor checks the final scheme, host, and port before
+  each request and ignores environment proxy settings. The accepted `localhost`
+  alias is pinned to `127.0.0.1` so host-file or DNS changes cannot redirect it.
 - OpenAPI 2.x/Swagger documents, external targets, and rate-limit testing are
   outside this local scanner MVP. A separate hosted persistence foundation now
   supports multi-tenant scan history and jobs without expanding target access.
+
+An offline compatibility check of Swagger API's public
+[Swagger Petstore OpenAPI 3.0 specification](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)
+on 25 September 2026 parsed its 13 paths but discovered zero supported endpoint
+pairs. Its OAuth2 and API-key security definitions do not match SentinelAPI's
+fixed local `POST /auth/login` flow. The public API itself was not scanned.
 
 ## Seeded vulnerabilities
 

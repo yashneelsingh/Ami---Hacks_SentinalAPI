@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import tempfile
+import threading
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +18,8 @@ from .reproduction import build_curl
 from .severity import sort_key
 
 
-REPORT_SCHEMA_VERSION = "1.1"
+REPORT_SCHEMA_VERSION = "1.2"
+_REPORT_WRITE_LOCK = threading.Lock()
 
 
 class JsonReporter:
@@ -34,6 +39,7 @@ def build_report(findings: Iterable[Finding], target_name: str, *, secrets: Iter
     report = {
         "tool": "SentinelAPI",
         "version": REPORT_SCHEMA_VERSION,
+        "schema_version": REPORT_SCHEMA_VERSION,
         "target": target_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": _summary(ordered),
@@ -47,6 +53,7 @@ def markdown_report(report: dict) -> str:
     lines = [
         "# SentinelAPI Scan Report",
         "",
+        f"**Schema version:** {report.get('schema_version', report['version'])}",
         f"**Target:** {report['target']}",
         f"**Generated:** {report['generated_at']}",
         f"**Scan status:** {report.get('scan_status', 'completed').capitalize()}",
@@ -69,12 +76,22 @@ def markdown_report(report: dict) -> str:
             f"| {outcome_counts['pass']} | {outcome_counts['fail']} | {outcome_counts['inconclusive']} | {outcome_counts['error']} |",
             "",
         ])
+    tested_endpoints = report.get("tested_endpoints", [])
+    if tested_endpoints:
+        lines.extend(["## Tested endpoints", ""])
+        for endpoint in tested_endpoints:
+            lines.append(f"- `{endpoint['method']} {endpoint['endpoint']}`: {endpoint['outcome']}; {endpoint.get('reason', '')}")
+            if "owner_a_id" in endpoint and "owner_b_id" in endpoint:
+                lines.append(f"  - Selected IDs: User A `{endpoint['owner_a_id']}`, User B `{endpoint['owner_b_id']}`; cross-user HTTP `{endpoint.get('cross_user_status', 'not tested')}`.")
+        lines.append("")
+    if "fixture_version" in report:
+        lines.extend([f"**Fixture version:** {report['fixture_version']}", ""])
     findings = report["findings"]
     if not findings:
         message = (
             "The scan completed successfully with no confirmed findings."
             if report.get("result", "clean") == "clean"
-            else "The scan completed, but the ownership comparison was inconclusive."
+            else "The scan was incomplete or inconclusive; review the endpoint outcomes."
         )
         lines.extend(["## Findings", "", message])
         return "\n".join(lines) + "\n"
@@ -104,12 +121,42 @@ def markdown_report(report: dict) -> str:
 
 
 def write_reports(report: dict, output_dir: str | Path) -> tuple[Path, Path]:
-    """Write machine-readable JSON and human-readable Markdown reports."""
+    """Stage both formats before replacing reports, serializing concurrent writers."""
+    json_text = json.dumps(report, indent=2) + "\n"
+    markdown_text = markdown_report(report)
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     json_path = output / "sentinel_report.json"
     markdown_path = output / "sentinel_report.md"
-    json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    markdown_path.write_text(markdown_report(report), encoding="utf-8")
+    staged: list[Path] = []
+    backups: dict[Path, Path] = {}
+    with _REPORT_WRITE_LOCK:
+        try:
+            for content in (json_text, markdown_text):
+                with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="\n", dir=output, prefix=".sentinel-stage-", delete=False) as file:
+                    staged.append(Path(file.name))
+                    file.write(content)
+            for destination in (json_path, markdown_path):
+                if destination.exists():
+                    with tempfile.NamedTemporaryFile(dir=output, prefix=".sentinel-backup-", delete=False) as file:
+                        backup = Path(file.name)
+                    backups[destination] = backup
+                    shutil.copyfile(destination, backup)
+            replaced: list[Path] = []
+            try:
+                for source, destination in zip(staged, (json_path, markdown_path)):
+                    os.replace(source, destination)
+                    replaced.append(destination)
+            except OSError:
+                for destination in reversed(replaced):
+                    backup = backups.get(destination)
+                    if backup is not None:
+                        os.replace(backup, destination)
+                    else:
+                        destination.unlink(missing_ok=True)
+                raise
+        finally:
+            for path in (*staged, *backups.values()):
+                path.unlink(missing_ok=True)
     return json_path, markdown_path
 

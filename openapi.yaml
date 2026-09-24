@@ -42,6 +42,50 @@ paths:
         '200': { description: Order details (intentionally BOLA-vulnerable) }
         '401': { description: Missing or invalid token }
         '404': { description: Order missing }
+  /orders/{order_id}/summary:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Owner-scoped order summary }
+        '403': { description: Another user's order is forbidden }
+  /orders/{order_id}/tracking:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Owner-scoped local shipping status }
+        '403': { description: Another user's order is forbidden }
+  /orders/{order_id}/receipt:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Owner-scoped receipt with masked payment reference }
+        '403': { description: Another user's order is forbidden }
+  /orders/{order_id}/items:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Owner-scoped order line items }
+        '403': { description: Another user's order is forbidden }
   /profile:
     get:
       security: [{ bearerAuth: [] }]
