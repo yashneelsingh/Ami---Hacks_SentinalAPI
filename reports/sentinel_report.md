@@ -1,13 +1,13 @@
 # SentinelAPI Scan Report
 
-**Target:** Local intentionally vulnerable Order API
-**Generated:** 2026-09-24T09:03:34.527284+00:00
+**Target:** SentinelAPI Vulnerable Demo
+**Generated:** 2026-09-24T09:56:25.633115+00:00
 
 ## Summary
 
 | Critical | High | Medium | Low | Pass |
 | --- | --- | --- | --- | --- |
-| 1 | 1 | 1 | 0 | 0 |
+| 1 | 1 | 0 | 0 | 0 |
 
 ## Findings
 
@@ -15,10 +15,10 @@
 
 - **Endpoint:** `GET /orders/{order_id}`
 - **Score:** 9.5/10
-- **Evidence:** User A requested order 1002, owned by User B, and received HTTP 200 with User B's order data.
-- **Expected:** HTTP 403 or HTTP 404 because order 1002 is not owned by User A.
-- **Observed:** HTTP 200 with another user's order data.
-- **Fix:** Verify resource ownership for every object ID before reading, updating, or deleting it.
+- **Evidence:** user-a@example.test requested /orders/1002 (owned by user-b@example.test) and received HTTP 200 with the same object User B received.
+- **Expected:** HTTP 403 or HTTP 404 for another user's object.
+- **Observed:** HTTP 200; object ID 1002 was returned.
+- **Fix:** Verify object ownership before returning order details.
 
 **Safe reproduction command**
 
@@ -38,20 +38,5 @@ curl -X GET "http://127.0.0.1:8000/orders/1002" -H "Authorization: Bearer <TEST_
 **Safe reproduction command**
 
 ```bash
-curl -X GET "http://127.0.0.1:8000/orders/1002" -H "Authorization: Bearer <TEST_USER_TOKEN>"
-```
-
-### 3. [Medium] Possible Missing Rate Limiting
-
-- **Endpoint:** `POST /auth/login`
-- **Score:** 5.5/10
-- **Evidence:** All 5 controlled sandbox requests succeeded without a limiting response.
-- **Expected:** A sensitive endpoint should enforce a documented rate limit.
-- **Observed:** No limiting response was observed during the safe low-volume probe.
-- **Fix:** Add endpoint-appropriate rate limiting and return HTTP 429 when the threshold is exceeded.
-
-**Safe reproduction command**
-
-```bash
-curl -X POST "http://127.0.0.1:8000/auth/login" -H "Content-Type: application/json" -d '{"email":"user-a@example.test","password":"demo-password-a"}'
+curl -X GET "http://127.0.0.1:8000/orders/1001" -H "Authorization: Bearer <TEST_USER_TOKEN>"
 ```

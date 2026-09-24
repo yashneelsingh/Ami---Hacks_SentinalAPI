@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelAPI | Local scan</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="mark">S</span><span>Sentinel<span class="brand-accent">API</span></span></div>
+      <div class="nav-label">WORKSPACE</div>
+      <nav><a class="nav-active" href="/">Overview</a><a href="/docs" target="_blank" rel="noopener">API reference <span aria-hidden="true">↗</span></a></nav>
+      <div class="sidebar-bottom"><span class="status-dot"></span> Local sandbox <span class="sidebar-version">v0.1</span></div>
+    </aside>
+    <main>
+      <header class="topbar"><span>Security workspace <span class="crumb">/</span> Overview</span><span class="topbar-right">Sandbox target <span class="topbar-dot"></span> 127.0.0.1</span></header>
+      <div class="content">
+        <div class="heading-row">
+          <div><div class="eyebrow">SPECIFICATION-DRIVEN TESTING</div><h1>API security overview</h1><p class="lead">Run a controlled, two-user authorization check against the seeded order API.</p></div>
+          <button id="run-scan" class="primary-button" type="button"><span aria-hidden="true">▶</span> Run scan</button>
+        </div>
+
+        <section class="target-section" aria-label="Scan target">
+          <div class="section-heading"><h2>Scan target</h2><span class="section-note">LOCAL DEMO</span></div>
+          <div class="target-grid">
+            <div><span class="field-label">API DEFINITION</span><strong id="spec-name">openapi.yaml</strong><small><label class="spec-picker">Choose OpenAPI file<input id="spec-file" type="file" accept=".yaml,.yml,.json,application/json,text/yaml"></label> · <a href="/openapi.json" target="_blank" rel="noopener">Live spec</a></small></div>
+            <div><span class="field-label">BASE URL</span><strong id="base-url">http://127.0.0.1:8000</strong><small>Loopback only</small></div>
+            <div><span class="field-label">TEST IDENTITIES</span><strong>User A → User B</strong><small>Separate seeded orders · 1001 / 1002</small></div>
+          </div>
+        </section>
+
+        <div class="section-heading results-title"><h2>Results</h2><span id="scan-state" class="scan-state">Not scanned</span></div>
+        <div class="metrics" aria-label="Severity summary">
+          <div class="metric"><span class="metric-label">Critical</span><strong id="count-critical">—</strong><span class="metric-rule critical"></span></div>
+          <div class="metric"><span class="metric-label">High</span><strong id="count-high">—</strong><span class="metric-rule high"></span></div>
+          <div class="metric"><span class="metric-label">Medium</span><strong id="count-medium">—</strong><span class="metric-rule medium"></span></div>
+          <div class="metric"><span class="metric-label">Low</span><strong id="count-low">—</strong><span class="metric-rule low"></span></div>
+        </div>
+
+        <section class="findings-section" aria-label="Findings">
+          <div class="findings-header"><div><h2>Findings <span id="finding-total" class="total">0</span></h2><p>Evidence from authenticated requests</p></div><div class="download-actions"><button id="download-json" type="button" disabled>JSON</button><button id="download-md" type="button" disabled>Markdown</button></div></div>
+          <div id="findings" class="findings"><div class="empty-state"><div class="empty-icon">◎</div><strong>No scan results yet</strong><span>Run a scan to compare access between the two test users.</span></div></div>
+        </section>
+        <p id="error" class="error" role="alert" hidden></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

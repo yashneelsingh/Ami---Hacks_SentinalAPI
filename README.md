@@ -1,4 +1,4 @@
-# SentinelAPI Vulnerable Demo API
+# SentinelAPI Local Demo
 
 This is an **intentionally vulnerable, local-only** order-management API for authorized SentinelAPI scanner demonstrations. Do not deploy it, expose it publicly, or connect it to real user data.
 
@@ -12,7 +12,9 @@ python -m app.seed
 uvicorn app.main:app --reload
 ```
 
-The API runs at `http://127.0.0.1:8000`. Its live OpenAPI 3.x document is at `http://127.0.0.1:8000/openapi.json`; a checked-in copy is [`openapi.yaml`](openapi.yaml).
+Open `http://127.0.0.1:8000/` for the V0 scanner UI. Click **Run scan** to parse the checked-in OpenAPI document, log in as both seeded users, discover their order IDs from `GET /orders`, and test User A's access to User B's order. You can also choose a local OpenAPI 3.x YAML or JSON file in the UI; scans still target the local sandbox using the two seeded identities.
+
+The live API definition is at `http://127.0.0.1:8000/openapi.json`; the checked-in copy is [`openapi.yaml`](openapi.yaml). Swagger UI is at `http://127.0.0.1:8000/docs`.
 
 ## Test identities
 
@@ -59,5 +61,4 @@ python -m scanner.demo
 ```
 
 The SQLite database is created locally at `data/sentinel_demo.db` and is excluded from version control.
-The report module writes compatible JSON and Markdown reports to `reports/` using the API's
-`http://127.0.0.1:8000` base URL, `/orders/{order_id}` path template, and seeded response fields.
+Running a scan writes JSON and Markdown reports to `reports/`. The scanner uses bounded GET requests for the ownership comparison and reports BOLA only when User A receives the same object User B receives. The secondary data-exposure check runs on User A's own order response.

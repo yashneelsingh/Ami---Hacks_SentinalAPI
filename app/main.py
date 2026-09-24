@@ -1,18 +1,26 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+import httpx
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.database import database_session, ensure_database
+from scanner.core import Credentials, scan
+from scanner.report_generator import markdown_report, write_reports
 
 
 TOKENS = {
     "demo-token-user-a": {"id": 1, "email": "user-a@example.test", "role": "customer"},
     "demo-token-user-b": {"id": 2, "email": "user-b@example.test", "role": "customer"},
 }
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class LoginRequest(BaseModel):
@@ -29,11 +37,15 @@ class OrderUpdate(BaseModel):
     shipping_address: str | None = Field(default=None, min_length=3, max_length=200)
 
 
-def get_current_user(authorization: Annotated[str | None, Header()] = None) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
+class ScanRequest(BaseModel):
+    spec: str | None = Field(default=None, max_length=250_000)
+
+
+def get_current_user(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)] = None) -> dict:
+    if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
 
-    token = authorization.removeprefix("Bearer ")
+    token = credentials.credentials
     user = TOKENS.get(token)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid test token")
@@ -52,6 +64,30 @@ app = FastAPI(
     description="INTENTIONALLY VULNERABLE local-only API for authorized scanner demonstrations.",
     lifespan=lifespan,
 )
+
+ROOT = Path(__file__).resolve().parent.parent
+app.mount("/static", StaticFiles(directory=ROOT / "app" / "static"), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def dashboard() -> FileResponse:
+    return FileResponse(ROOT / "app" / "static" / "index.html")
+
+
+@app.post("/api/scan", tags=["scanner"])
+def run_demo_scan(request: Request, options: ScanRequest | None = None) -> dict:
+    spec = options.spec if options and options.spec else (ROOT / "openapi.yaml").read_text(encoding="utf-8")
+    try:
+        report = scan(
+            spec=spec,
+            base_url=str(request.base_url),
+            user_a=Credentials("user-a@example.test", "demo-password-a"),
+            user_b=Credentials("user-b@example.test", "demo-password-b"),
+        )
+    except (ValueError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    write_reports(report, ROOT / "reports")
+    return {"report": report, "markdown": markdown_report(report)}
 
 
 @app.get("/health", tags=["system"])
