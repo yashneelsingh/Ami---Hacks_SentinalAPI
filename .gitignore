@@ -23,4 +23,24 @@ coverage.xml
 htmlcov/
 test-results/
 *.md
+!README.md
 SOLUTION_OVERVIEW.md
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# Local application runtime and generated scan artifacts
+*.log
+logs/
+output/
+reports/*.json
+reports/*.html
+
+# Packaging and build output
+build/
+dist/
+*.egg-info/
