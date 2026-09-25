@@ -22,3 +22,5 @@ backups/
 coverage.xml
 htmlcov/
 test-results/
+*.md
+SOLUTION_OVERVIEW.md
