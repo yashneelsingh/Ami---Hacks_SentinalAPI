@@ -2,7 +2,7 @@
 
 **Schema version:** 1.2
 **Target:** SentinelAPI Vulnerable Demo
-**Generated:** 2026-09-24T21:57:28.748711+00:00
+**Generated:** 2026-09-24T22:08:05.516918+00:00
 **Scan status:** Completed
 **Result:** Findings
 
