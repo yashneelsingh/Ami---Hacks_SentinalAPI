@@ -86,6 +86,27 @@ class HostedRepositoryTests(unittest.TestCase):
                 target_identifier="http://127.0.0.1:8000",
             )
 
+    def test_scan_targets_are_restricted_to_local_http_origins(self):
+        for target in (
+            "https://127.0.0.1:8000",
+            "http://example.test",
+            "http://127.0.0.1:8000/path",
+            "http://127.0.0.1:8000?token=secret",
+        ):
+            with self.subTest(target=target), self.assertRaises(ValueError):
+                self.repository.create_scan(
+                    self.organization_a.id,
+                    self.user_a.id,
+                    target_identifier=target,
+                )
+
+        scan = self.repository.create_scan(
+            self.organization_a.id,
+            self.user_a.id,
+            target_identifier="http://localhost:8000/",
+        )
+        self.assertEqual(scan.target_identifier, "http://127.0.0.1:8000")
+
     def test_application_sessions_store_only_hashes_and_are_revocable(self):
         token = self.repository.issue_session(self.organization_a.id, self.user_a.id)
         with self.sessions() as session:

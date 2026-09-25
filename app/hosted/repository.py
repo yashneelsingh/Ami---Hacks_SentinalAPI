@@ -7,12 +7,12 @@ import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
-from urllib.parse import urlsplit
 
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from scanner.redaction import redact_value
+from scanner.core import validate_local_base_url
 
 from .models import (
     ApplicationUser,
@@ -569,12 +569,7 @@ def _safe_target_identifier(value: str) -> str:
     target = value.strip()
     if not target or len(target) > 512:
         raise ValueError("Target identifier is required and must be at most 512 characters")
-    parsed = urlsplit(target)
-    if parsed.username or parsed.password:
-        raise ValueError("Target identifiers must not contain credentials")
-    if parsed.query or parsed.fragment:
-        raise ValueError("Target identifiers must not contain query strings or fragments")
-    return target
+    return validate_local_base_url(target)
 
 
 def _finding_fingerprint(finding: dict[str, Any]) -> str:

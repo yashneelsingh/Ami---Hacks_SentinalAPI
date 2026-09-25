@@ -31,7 +31,8 @@ class ScanError(ValueError):
     """A controlled, user-safe scanner failure."""
 
 
-def _local_base_url(value: str) -> str:
+def validate_local_base_url(value: str) -> str:
+    """Normalize an allowed local HTTP origin before it is persisted or used."""
     parts = urlsplit(value)
     if parts.scheme != "http" or parts.username or parts.password or parts.path not in ("", "/") or parts.query or parts.fragment:
         raise ScanError("Target must be a local HTTP origin")
@@ -145,7 +146,7 @@ def scan(
     reporter: Reporter | None = None,
 ) -> dict:
     """Compare two owners with bounded, read-only requests to a local target."""
-    origin = _local_base_url(base_url)
+    origin = validate_local_base_url(base_url)
     document = parse_spec(spec)
     endpoints = discover_object_endpoints(document)
     if not endpoints:
