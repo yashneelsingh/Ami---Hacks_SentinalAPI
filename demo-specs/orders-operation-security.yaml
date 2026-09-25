@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info:
+  title: Orders API - Operation Security Demo
+  version: 1.0.0
+  description: >-
+    Local-only jury fixture. It declares bearer authentication and the path
+    parameter directly on the detail operation.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /auth/login:
+    post:
+      responses:
+        '200':
+          description: Test bearer token
+  /orders:
+    get:
+      responses:
+        '200':
+          description: Orders owned by the authenticated test user
+  /orders/{order_id}:
+    get:
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order details
+        '403':
+          description: Another user's order is forbidden
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+

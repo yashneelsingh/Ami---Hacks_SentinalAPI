@@ -29,6 +29,63 @@ class CoreScannerTests(unittest.TestCase):
         self.assertEqual(len(endpoints), 1)  # Nested support routes are not scanner targets.
         self.assertEqual(discover_object_endpoints(parse_spec(app.openapi()))[0].detail_path, "/orders/{order_id}")
 
+    def test_jury_demo_specs_discover_only_the_supported_order_detail(self):
+        demo_specs = ROOT / "demo-specs"
+        expected_endpoints = {
+            "orders-operation-security.yaml": ("/orders", "/orders/{order_id}"),
+            "orders-root-security.yaml": ("/secure-orders", "/secure-orders/{order_id}"),
+            "orders-mixed-routes.yaml": ("/unstable-orders", "/unstable-orders/{order_id}"),
+        }
+        self.assertEqual({path.name for path in demo_specs.glob("*.yaml")}, set(expected_endpoints))
+
+        for spec_name, (collection_path, detail_path) in expected_endpoints.items():
+            with self.subTest(spec=spec_name):
+                document = parse_spec((demo_specs / spec_name).read_text(encoding="utf-8"))
+                endpoints = discover_object_endpoints(document)
+                self.assertEqual(len(endpoints), 1)
+                self.assertEqual(endpoints[0].collection_path, collection_path)
+                self.assertEqual(endpoints[0].detail_path, detail_path)
+                self.assertEqual(endpoints[0].parameter_name, "order_id")
+
+    def test_jury_demo_specs_complete_distinct_live_flows(self):
+        demo_specs = ROOT / "demo-specs"
+        expected_results = {
+            "orders-operation-security.yaml": ("findings", "fail", 1, 1),
+            "orders-root-security.yaml": ("clean", "pass", 0, 0),
+            "orders-mixed-routes.yaml": ("inconclusive", "inconclusive", 0, 0),
+        }
+
+        with TestClient(app) as target:
+            def forward(request: httpx.Request) -> httpx.Response:
+                response = target.request(
+                    request.method,
+                    request.url.path,
+                    headers=dict(request.headers),
+                    content=request.content,
+                )
+                return httpx.Response(
+                    response.status_code,
+                    headers=dict(response.headers),
+                    content=response.content,
+                )
+
+            for spec_path in sorted(demo_specs.glob("*.yaml")):
+                with self.subTest(spec=spec_path.name):
+                    expected_result, expected_outcome, critical, high = expected_results[spec_path.name]
+                    report = scan(
+                        spec=spec_path.read_text(encoding="utf-8"),
+                        base_url="http://127.0.0.1:8000",
+                        user_a=Credentials("user-a@example.test", "demo-password-a"),
+                        user_b=Credentials("user-b@example.test", "demo-password-b"),
+                        transport=httpx.MockTransport(forward),
+                    )
+                    self.assertEqual(report["scan_status"], "completed")
+                    self.assertEqual(report["result"], expected_result)
+                    self.assertEqual(report["summary"]["Critical"], critical)
+                    self.assertEqual(report["summary"]["High"], high)
+                    self.assertEqual(len(report["tested_endpoints"]), 1)
+                    self.assertEqual(report["tested_endpoints"][0]["outcome"], expected_outcome)
+
     def test_live_two_user_scan_confirms_bola_and_exposure(self):
         with TestClient(app) as target:
             def forward(request: httpx.Request) -> httpx.Response:

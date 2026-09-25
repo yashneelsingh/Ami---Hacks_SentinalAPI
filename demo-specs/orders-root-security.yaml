@@ -1,0 +1,43 @@
+openapi: 3.1.0
+info:
+  title: Orders API - Root Security Demo
+  version: 1.1.0
+  description: >-
+    Local-only jury fixture. It uses document-level bearer security and puts
+    the identifier declaration on the path item instead of the GET operation.
+servers:
+  - url: http://localhost:8000
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      security: []
+      responses:
+        '200':
+          description: Test bearer token
+  /secure-orders:
+    get:
+      responses:
+        '200':
+          description: Orders owned by the authenticated test user
+  /secure-orders/{order_id}:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      responses:
+        '200':
+          description: Order details
+        '404':
+          description: Order not found or not visible to this user
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: DemoToken

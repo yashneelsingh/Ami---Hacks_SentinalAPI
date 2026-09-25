@@ -7,6 +7,14 @@ Repository: <https://github.com/yashneelsingh/Ami---Hacks_SentinalAPI>
 Copy-ready project text for an organizer-provided form is in
 `SUBMISSION_COPY.md`.
 
+## Architecture
+
+- `ARCHITECTURE_DIAGRAM.md` — submission-ready architecture narrative,
+  component responsibilities, safety boundaries, and deployment view.
+- `architecture-diagram.png` — presentation-ready 1600 × 1000 architecture
+  diagram suitable for the README, judging portal, or deck.
+- `architecture-diagram.svg` — editable vector source for the diagram.
+
 ## Presentation
 
 - `SentinelAPI_AMIHACKS_Deck_v2.pptx` — validated 9-slide 16:9 deck covering

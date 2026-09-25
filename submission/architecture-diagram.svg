@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">SentinelAPI system architecture</title>
+  <desc id="desc">A layered architecture showing the local browser, FastAPI service, scanner pipeline, local target APIs, reporting, safety controls, and isolated optional hosted persistence.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="1" stop-color="#111b31"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="arrowMuted" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title { font: 700 38px 'Segoe UI', Arial, sans-serif; fill: #f8fafc; }
+      .subtitle { font: 400 18px 'Segoe UI', Arial, sans-serif; fill: #94a3b8; }
+      .zone { font: 700 15px 'Segoe UI', Arial, sans-serif; fill: #cbd5e1; letter-spacing: 1.4px; }
+      .h { font: 700 19px 'Segoe UI', Arial, sans-serif; fill: #f8fafc; }
+      .b { font: 400 14px 'Segoe UI', Arial, sans-serif; fill: #cbd5e1; }
+      .small { font: 500 12px 'Segoe UI', Arial, sans-serif; fill: #94a3b8; }
+      .chip { font: 700 12px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
+      .line { stroke: #7dd3fc; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .mutedLine { stroke: #64748b; stroke-width: 2; stroke-dasharray: 7 7; fill: none; marker-end: url(#arrowMuted); }
+      .card { fill: #162238; stroke: #334155; stroke-width: 1.5; rx: 16; filter: url(#shadow); }
+      .core { fill: #132b3b; stroke: #22d3ee; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .target { fill: #231d3c; stroke: #818cf8; stroke-width: 1.7; rx: 16; filter: url(#shadow); }
+      .safe { fill: #132c2a; stroke: #34d399; stroke-width: 1.7; rx: 16; filter: url(#shadow); }
+      .risk { fill: #351b27; stroke: #fb7185; stroke-width: 1.7; rx: 16; filter: url(#shadow); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <circle cx="1430" cy="90" r="190" fill="#312e81" opacity="0.18"/>
+  <circle cx="120" cy="930" r="230" fill="#0e7490" opacity="0.12"/>
+
+  <text x="70" y="70" class="title">SentinelAPI — System Architecture</text>
+  <text x="70" y="102" class="subtitle">Local-only, specification-driven proof of object-level authorization failures</text>
+  <rect x="1282" y="53" width="248" height="38" rx="19" fill="url(#hero)"/>
+  <text x="1406" y="77" text-anchor="middle" class="chip">SAFE • READ-ONLY • EXPLAINABLE</text>
+
+  <text x="70" y="157" class="zone">EXPERIENCE &amp; API</text>
+  <text x="70" y="342" class="zone">SCANNER PIPELINE</text>
+  <text x="70" y="655" class="zone">AUTHORIZED LOCAL TARGETS</text>
+
+  <rect x="70" y="180" width="300" height="115" class="card"/>
+  <circle cx="105" cy="215" r="15" fill="#22d3ee"/>
+  <path d="M97 215h16M105 207v16" stroke="#07111f" stroke-width="2.5"/>
+  <text x="135" y="218" class="h">Browser dashboard</text>
+  <text x="95" y="250" class="b">OpenAPI input • target origin</text>
+  <text x="95" y="273" class="b">evidence • remediation • downloads</text>
+
+  <rect x="510" y="180" width="390" height="115" class="core"/>
+  <text x="540" y="218" class="h">FastAPI service</text>
+  <text x="540" y="250" class="b">POST /api/scan • report endpoints</text>
+  <text x="540" y="273" class="b">server-side validation and orchestration</text>
+
+  <rect x="1050" y="180" width="480" height="115" class="card"/>
+  <text x="1080" y="218" class="h">Safety gate</text>
+  <text x="1080" y="248" class="b">loopback HTTP only • redirects blocked • proxy ignored</text>
+  <text x="1080" y="272" class="b">5 s timeout • 3 endpoints • bounded spec/response sizes</text>
+
+  <path d="M370 238 H510" class="line"/>
+  <text x="440" y="226" text-anchor="middle" class="small">scan request</text>
+  <path d="M900 238 H1050" class="line"/>
+  <text x="975" y="226" text-anchor="middle" class="small">validate</text>
+
+  <rect x="70" y="365" width="1460" height="245" rx="24" fill="#0b1527" stroke="#334155" stroke-width="1.5"/>
+  <rect x="96" y="389" width="244" height="90" class="card"/>
+  <text x="218" y="424" text-anchor="middle" class="h">1. Parse &amp; discover</text>
+  <text x="218" y="452" text-anchor="middle" class="b">OpenAPI 3.x GET pairs</text>
+
+  <rect x="388" y="389" width="244" height="90" class="card"/>
+  <text x="510" y="424" text-anchor="middle" class="h">2. Authenticate</text>
+  <text x="510" y="452" text-anchor="middle" class="b">User A + User B</text>
+
+  <rect x="680" y="389" width="244" height="90" class="core"/>
+  <text x="802" y="424" text-anchor="middle" class="h">3. Execute</text>
+  <text x="802" y="452" text-anchor="middle" class="b">bounded owner + cross-user GETs</text>
+
+  <rect x="972" y="389" width="244" height="90" class="card"/>
+  <text x="1094" y="424" text-anchor="middle" class="h">4. Compare</text>
+  <text x="1094" y="452" text-anchor="middle" class="b">exact owner-object match</text>
+
+  <rect x="1264" y="389" width="240" height="90" class="card"/>
+  <text x="1384" y="424" text-anchor="middle" class="h">5. Report</text>
+  <text x="1384" y="452" text-anchor="middle" class="b">rank • redact • explain</text>
+
+  <path d="M340 434 H388" class="line"/>
+  <path d="M632 434 H680" class="line"/>
+  <path d="M924 434 H972" class="line"/>
+  <path d="M1216 434 H1264" class="line"/>
+
+  <rect x="96" y="515" width="1408" height="67" rx="14" fill="#101e32" stroke="#26364e"/>
+  <text x="120" y="542" class="h">Typed policy boundaries</text>
+  <text x="120" y="567" class="b">Authenticator  •  RequestExecutor  •  OwnershipComparator  •  Reporter  |  outcomes: pass / fail / inconclusive / error</text>
+
+  <path d="M705 295 V340 Q705 365 680 365" class="line"/>
+  <path d="M1384 479 V630 Q1384 660 1354 660" class="line"/>
+
+  <rect x="70" y="680" width="405" height="150" class="risk"/>
+  <text x="100" y="718" class="h">Vulnerable demo API</text>
+  <text x="100" y="750" class="b">FastAPI + deterministic SQLite fixtures</text>
+  <text x="100" y="776" class="b">missing ownership check + sensitive fields</text>
+  <rect x="100" y="793" width="235" height="24" rx="12" fill="#fb7185"/>
+  <text x="217" y="810" text-anchor="middle" class="chip">EXPECTED: 1 CRITICAL + 1 HIGH</text>
+
+  <rect x="555" y="680" width="405" height="150" class="safe"/>
+  <text x="585" y="718" class="h">Secure negative control</text>
+  <text x="585" y="750" class="b">ownership enforcement + field allowlist</text>
+  <text x="585" y="776" class="b">same scanner, clean comparison result</text>
+  <rect x="585" y="793" width="202" height="24" rx="12" fill="#34d399"/>
+  <text x="686" y="810" text-anchor="middle" class="chip">EXPECTED: 0 FINDINGS</text>
+
+  <rect x="1040" y="680" width="490" height="150" class="target"/>
+  <text x="1070" y="718" class="h">Evidence &amp; reports</text>
+  <text x="1070" y="750" class="b">versioned JSON • Markdown • structured safe logs</text>
+  <text x="1070" y="776" class="b">tested endpoint, observed/expected behavior, reproduction, fix</text>
+  <text x="1070" y="807" class="small">Bearer tokens and passwords are redacted before persistence.</text>
+
+  <path d="M802 610 V640 Q802 660 777 660 H272 V680" class="line"/>
+  <path d="M802 610 V640 Q802 660 827 660 H757 V680" class="line"/>
+  <path d="M1384 660 H1285 V680" class="line"/>
+
+  <rect x="70" y="875" width="1460" height="80" rx="18" fill="#111827" stroke="#475569" stroke-dasharray="8 7"/>
+  <text x="95" y="908" class="h">Optional hosted persistence — isolated from the MVP scan path</text>
+  <text x="95" y="936" class="b">Tenant-scoped SQLAlchemy repository  →  PostgreSQL  •  Alembic migrations  •  worker leasing  •  encrypted expiring credentials  •  audit metadata</text>
+  <path d="M1285 830 V875" class="mutedLine"/>
+
+  <text x="1530" y="985" text-anchor="end" class="small">Current implementation • September 2026</text>
+</svg>

@@ -179,6 +179,7 @@ class ScannerModuleTests(unittest.TestCase):
         self.assertNotIn('src="http://', dashboard)
         self.assertNotIn('src="https://', dashboard)
         self.assertIn('/api/reports/sentinel_report.${format}', dashboard_script)
+        self.assertNotIn('id="demo-spec-select"', dashboard)
 
 
 if __name__ == "__main__":

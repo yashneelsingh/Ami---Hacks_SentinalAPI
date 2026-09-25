@@ -51,6 +51,19 @@ class VulnerableDemoTests(unittest.TestCase):
                 response = self.client.get(f"/orders/1002/{suffix}", headers=headers)
                 self.assertEqual(response.status_code, 403)
 
+    def test_jury_control_endpoints_produce_distinct_live_responses(self):
+        headers = {"Authorization": "Bearer demo-token-user-a"}
+
+        secure_own = self.client.get("/secure-orders/1001", headers=headers)
+        secure_cross = self.client.get("/secure-orders/1002", headers=headers)
+        unstable_own = self.client.get("/unstable-orders/1001", headers=headers)
+        unstable_cross = self.client.get("/unstable-orders/1002", headers=headers)
+
+        self.assertEqual(secure_own.status_code, 200)
+        self.assertNotIn("internal_notes", secure_own.json())
+        self.assertEqual(secure_cross.status_code, 403)
+        self.assertEqual(unstable_own.status_code, 200)
+        self.assertEqual(unstable_cross.status_code, 429)
 
 class SecureControlTests(unittest.TestCase):
     def setUp(self):

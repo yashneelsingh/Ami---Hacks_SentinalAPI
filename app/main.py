@@ -170,6 +170,38 @@ def get_order(order_id: int, _: Annotated[dict, Depends(get_current_user)]) -> d
     return dict(row)
 
 
+@app.get("/secure-orders", tags=["jury-demo-controls"])
+def list_secure_orders(current_user: Annotated[dict, Depends(get_current_user)]) -> list[dict]:
+    """Expose the same owner-filtered collection for the secure jury control."""
+    return list_orders(current_user)
+
+
+@app.get("/secure-orders/{order_id}", tags=["jury-demo-controls"])
+def get_secure_order(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+    """Return an allowlisted order view only to its owner."""
+    order = _owned_order(order_id, current_user)
+    return {key: order[key] for key in ("id", "item_name", "amount", "shipping_address")}
+
+
+@app.get("/unstable-orders", tags=["jury-demo-controls"])
+def list_unstable_orders(current_user: Annotated[dict, Depends(get_current_user)]) -> list[dict]:
+    """Expose owner-filtered objects for the inconclusive jury control."""
+    return list_orders(current_user)
+
+
+@app.get("/unstable-orders/{order_id}", tags=["jury-demo-controls"])
+def get_unstable_order(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+    """Simulate an ambiguous rate-limited cross-user response without claiming BOLA."""
+    with database_session() as connection:
+        row = connection.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if row["owner_id"] != current_user["id"]:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Demo control is temporarily unavailable")
+    order = dict(row)
+    return {key: order[key] for key in ("id", "item_name", "amount", "shipping_address")}
+
+
 def _owned_order(order_id: int, current_user: dict) -> dict:
     """Load an order only when it belongs to the authenticated local demo user."""
     with database_session() as connection:

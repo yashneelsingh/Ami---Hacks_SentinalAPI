@@ -20,6 +20,26 @@ The dashboard uses only checked-in HTML, CSS, and JavaScript. It does not load f
 
 The live API definition is at `http://127.0.0.1:8000/openapi.json`; the checked-in copy is [`openapi.yaml`](openapi.yaml). Swagger UI is at `http://127.0.0.1:8000/docs`.
 
+### Jury demo specification files
+
+The [`demo-specs`](demo-specs) folder contains extra OpenAPI YAML files that can
+be selected from the dashboard while the vulnerable sandbox is running at
+`http://127.0.0.1:8000`:
+
+| File | What it demonstrates | Expected result |
+| --- | --- | --- |
+| [`orders-operation-security.yaml`](demo-specs/orders-operation-security.yaml) | Vulnerable `/orders/{order_id}` with operation-level security | Findings: 1 Critical BOLA and 1 High exposure |
+| [`orders-root-security.yaml`](demo-specs/orders-root-security.yaml) | Ownership-safe `/secure-orders/{order_id}` with document-level security | Clean: cross-user request returns HTTP 403 and no sensitive fields are exposed |
+| [`orders-mixed-routes.yaml`](demo-specs/orders-mixed-routes.yaml) | `/unstable-orders/{order_id}` plus ignored public and nested routes | Inconclusive: cross-user request returns HTTP 429 and produces no false finding |
+
+All three files run against `http://127.0.0.1:8000`, but select live endpoints
+with intentionally different server behavior. This lets the jury see finding,
+clean, and inconclusive outcomes without changing servers. The separate
+[`openapi-secure.yaml`](openapi-secure.yaml) target on port 8011 remains the
+strongest independent negative control. Reset the database with
+`python -m app.seed` before a jury session so every run starts from the same two
+test-owned orders.
+
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system flow and safety boundaries.
 The optional hosted persistence foundation has a separate operational runbook in
 [`HOSTED_DATABASE.md`](HOSTED_DATABASE.md). Record participant-owned work in
@@ -58,6 +78,8 @@ Tokens returned by login are deterministic demo tokens. They are not authenticat
 - `POST /auth/login`
 - `GET /orders`
 - `GET /orders/{order_id}`
+- `GET /secure-orders` and `GET /secure-orders/{order_id}` (clean jury control)
+- `GET /unstable-orders` and `GET /unstable-orders/{order_id}` (inconclusive jury control)
 - `GET /orders/{order_id}/summary`
 - `GET /orders/{order_id}/tracking`
 - `GET /orders/{order_id}/receipt`
